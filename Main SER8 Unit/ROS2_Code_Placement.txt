@@ -1,0 +1,11 @@
+ros2_ws/
+  src/
+    main_control/
+      package.xml
+      setup.py
+      main_control/
+        __init__.py
+        main_controller_node.py
+        udp_motor_client.py
+      launch/
+        main_control.launch.py
