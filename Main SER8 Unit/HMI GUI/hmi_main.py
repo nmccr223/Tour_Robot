@@ -8,6 +8,8 @@ from rclpy.node import Node
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from eyes_widget import EyesWidget, EyeMood
+
 
 @dataclass
 class LocationEntry:
@@ -209,6 +211,10 @@ class HmiMainWindow(QtWidgets.QMainWindow):
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(20)
 
+        # Animated eyes widget (robot "face") at the top of the screen.
+        self.eyes_widget = EyesWidget(self)
+        main_layout.addWidget(self.eyes_widget)
+
         # Top label / header (can later show robot state, etc.).
         header = QtWidgets.QLabel("Select Destination")
         header_font = header.font()
@@ -348,6 +354,10 @@ class HmiMainWindow(QtWidgets.QMainWindow):
         (e.g., goal, mission command) using self._node.
         """
         self._node.get_logger().info(f"Location selected: id={loc.id}, name={loc.name}")
+        # Give the eyes a short happy reaction when a location is selected.
+        if hasattr(self, "eyes_widget") and self.eyes_widget is not None:
+            self.eyes_widget.set_mood(EyeMood.HAPPY)
+            self.eyes_widget.blink()
         # TODO: Publish a ROS message here, e.g.:
         # msg = YourGoalMsg()
         # msg.location_id = loc.id
@@ -419,6 +429,11 @@ class AdminWindow(QtWidgets.QMainWindow):
         apply_btn = QtWidgets.QPushButton("Apply")
         apply_btn.clicked.connect(self.apply_selected_action)
         toolbar_layout.addWidget(apply_btn)
+
+        # Eyes customization button.
+        eyes_btn = QtWidgets.QPushButton("Eyes settings")
+        eyes_btn.clicked.connect(self.open_eyes_settings)
+        toolbar_layout.addWidget(eyes_btn)
 
         toolbar_layout.addStretch(1)
 
@@ -591,6 +606,22 @@ class AdminWindow(QtWidgets.QMainWindow):
             self._model.save()
             self.refresh_list()
 
+    def open_eyes_settings(self):
+        """Open a dialog that lets admins customize the eyes widget."""
+        # We expect the main window (parent) to provide an EyesWidget instance.
+        main_window = self.parent()
+        eyes = getattr(main_window, "eyes_widget", None)
+        if eyes is None:
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Eyes not available",
+                "No eyes widget is available to configure.",
+            )
+            return
+
+        dialog = EyesSettingsDialog(eyes, self)
+        dialog.exec()
+
 
 class MappingEditorDialog(QtWidgets.QDialog):
     """Dialog to edit mapping info (floor plan + AprilTags) for a location."""
@@ -688,6 +719,68 @@ class MappingEditorDialog(QtWidgets.QDialog):
             self._location.nearby_tags = None
 
         super().accept()
+
+
+class EyesSettingsDialog(QtWidgets.QDialog):
+    """Dialog for admin-side customization of the robot eyes widget."""
+
+    def __init__(self, eyes_widget: EyesWidget, parent=None):
+        super().__init__(parent)
+        self._eyes = eyes_widget
+
+        self.setWindowTitle("Eyes Settings")
+        self.resize(400, 300)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
+
+        info = QtWidgets.QLabel(
+            "Adjust visual settings for the robot's eyes."
+        )
+        info.setWordWrap(True)
+        layout.addWidget(info)
+
+        form = QtWidgets.QFormLayout()
+
+        # Center pupil enabled.
+        self.center_pupil_checkbox = QtWidgets.QCheckBox("Enable center pupil")
+        # Approximate current value by checking if radius > 0 and enabled flag.
+        self.center_pupil_checkbox.setChecked(self._eyes._config.center_pupil_enabled)
+        self.center_pupil_checkbox.toggled.connect(self._on_center_pupil_toggled)
+        form.addRow("Center pupil:", self.center_pupil_checkbox)
+
+        # Center pupil size.
+        self.center_pupil_size_spin = QtWidgets.QSpinBox()
+        self.center_pupil_size_spin.setRange(2, 100)
+        self.center_pupil_size_spin.setValue(self._eyes._config.center_pupil_radius)
+        self.center_pupil_size_spin.valueChanged.connect(self._on_center_pupil_size_changed)
+        form.addRow("Center pupil size:", self.center_pupil_size_spin)
+
+        layout.addLayout(form)
+
+        # Buttons.
+        button_box = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.Close,
+            parent=self,
+        )
+        button_box.rejected.connect(self.reject)
+        button_box.accepted.connect(self.accept)
+        # For a settings dialog, Close is enough; accept just closes as well.
+        layout.addWidget(button_box)
+
+        # Initialize enabled state based on checkbox.
+        self._on_center_pupil_toggled(self.center_pupil_checkbox.isChecked())
+
+    # Slots
+
+    def _on_center_pupil_toggled(self, checked: bool) -> None:
+        self._eyes.set_center_pupil_enabled(checked)
+        self.center_pupil_size_spin.setEnabled(checked)
+
+    def _on_center_pupil_size_changed(self, value: int) -> None:
+        if self.center_pupil_checkbox.isChecked():
+            self._eyes.set_center_pupil_radius(value)
 
 
 def main():
