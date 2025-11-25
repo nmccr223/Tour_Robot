@@ -13,6 +13,9 @@ It produces a compact summary message that the main controller can use to decide
 Compared to the front camera pipeline, this is intentionally lighter:
   - Shorter max distance (backup zone only).
   - Optional frame skipping to reduce CPU load.
+
+This node is also a candidate for a future C++ port if Python CPU usage
+becomes critical, but is currently implemented in Python for faster iteration.
 """
 
 import math

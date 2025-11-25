@@ -1,4 +1,10 @@
 # front_oak_processor/front_oak_node.py
+# This node runs on the SER8 and post-processes the front OAK-D W outputs.
+# It subscribes to:
+#   - A depth point cloud from the Luxonis DepthAI ROS driver
+#   - NN detections (e.g. people) from the same driver
+# and publishes a compact summary that the main controller can use for
+# safety and navigation decisions
 import math
 from typing import Optional
 
