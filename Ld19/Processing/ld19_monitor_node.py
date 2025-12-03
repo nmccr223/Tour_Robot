@@ -30,7 +30,11 @@ class Ld19MonitorNode(Node):
         self.timer = self.create_timer(1.0, self.timer_callback)
 
     def summary_callback(self, msg: LidarScanSummary):
-        self.last_stamp = msg.stamp
+        # Log the received message for debugging
+        self.get_logger().info(f"Received summary: {msg}")
+        
+        # Use msg.header.stamp instead of msg.stamp
+        self.last_stamp = msg.header.stamp
         self.last_ros_time = self.get_clock().now()
 
     def timer_callback(self):

@@ -1,0 +1,2 @@
+# LD19 (CP210x) → stable symlink and auto-start service
+SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", SYMLINK+="ld19", MODE:="0666", TAG+="systemd", ENV{SYSTEMD_WANTS}="ld19.service"

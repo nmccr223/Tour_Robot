@@ -1,0 +1,16 @@
+[Unit]
+Description=LD19 LiDAR full stack (driver + preprocess + monitor)
+After=ld19.service
+Requires=ld19.service
+
+[Service]
+Type=simple
+User=tourrobotsub
+Environment=ROS_DOMAIN_ID=0
+Environment=ROS_LOCALHOST_ONLY=0
+ExecStart=/usr/local/bin/start_ld19_stack.sh
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

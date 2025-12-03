@@ -1,0 +1,15 @@
+[Unit]
+Description=LD19 LiDAR ROS 2 driver
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=tourrobotsub
+Environment=ROS_DOMAIN_ID=0
+Environment=ROS_LOCALHOST_ONLY=0
+ExecStart=/usr/local/bin/start_ld19.sh
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

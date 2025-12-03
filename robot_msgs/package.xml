@@ -1,5 +1,3 @@
-```xml
-// filepath: c:\Users\Nathan\Documents\CPTC\MECH450 Thesis\System Files\robot_msgs\package.xml
 <?xml version="1.0"?>
 <package format="3">
   <name>robot_msgs</name>
@@ -21,4 +19,3 @@
     <build_type>ament_cmake</build_type>
   </export>
 </package>
-```
