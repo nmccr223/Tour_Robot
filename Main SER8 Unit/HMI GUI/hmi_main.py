@@ -363,6 +363,38 @@ class HmiMainWindow(QtWidgets.QMainWindow):
         # msg.location_id = loc.id
         # self._goal_pub.publish(msg)
 
+    def call_shutdown_service(self):
+        """Call the shutdown service on the SER8.
+        
+        Raises:
+            Exception: if the service call fails or times out
+        """
+        from std_srvs.srv import Empty
+        
+        # Create a client for the shutdown service
+        client = self._node.create_client(Empty, '/ser8/shutdown_system')
+        
+        # Wait for service to be available (with timeout)
+        if not client.wait_for_service(timeout_sec=5.0):
+            raise Exception("Shutdown service (/ser8/shutdown_system) not available")
+        
+        # Create request and call the service
+        request = Empty.Request()
+        future = client.call_async(request)
+        
+        # Wait for response with timeout
+        import time
+        timeout = time.time() + 10.0
+        while not future.done():
+            if time.time() > timeout:
+                raise Exception("Shutdown service call timed out")
+            time.sleep(0.1)
+        
+        # Check result
+        result = future.result()
+        self._node.get_logger().info("Shutdown service call succeeded")
+        return result
+
 
 class HmiRosNode(Node):
     """
@@ -434,6 +466,12 @@ class AdminWindow(QtWidgets.QMainWindow):
         eyes_btn = QtWidgets.QPushButton("Eyes settings")
         eyes_btn.clicked.connect(self.open_eyes_settings)
         toolbar_layout.addWidget(eyes_btn)
+
+        # Shutdown button.
+        shutdown_btn = QtWidgets.QPushButton("Shutdown System")
+        shutdown_btn.setStyleSheet("background-color: #ff6b6b; color: white;")
+        shutdown_btn.clicked.connect(self.on_shutdown_clicked)
+        toolbar_layout.addWidget(shutdown_btn)
 
         toolbar_layout.addStretch(1)
 
@@ -621,6 +659,48 @@ class AdminWindow(QtWidgets.QMainWindow):
 
         dialog = EyesSettingsDialog(eyes, self)
         dialog.exec()
+
+    def on_shutdown_clicked(self):
+        """Handle shutdown button click with confirmation."""
+        reply = QtWidgets.QMessageBox.critical(
+            self,
+            "Confirm System Shutdown",
+            "Are you sure you want to shutdown the entire robot system?\n\n",
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+        )
+        
+        if reply != QtWidgets.QMessageBox.Yes:
+            return
+        
+        # Get the main window (parent)
+        main_window = self.parent()
+        if main_window is None:
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Error",
+                "Cannot access main window.",
+            )
+            return
+        
+        try:
+            # Call the shutdown service via main window
+            main_window.call_shutdown_service()
+            
+            QtWidgets.QMessageBox.information(
+                self,
+                "Shutdown Initiated",
+                "System shutdown has been initiated.\n\n"
+                "The robot will shutdown gracefully.",
+            )
+            
+            # Close the admin window after initiating shutdown
+            self.close()
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(
+                self,
+                "Shutdown Error",
+                f"Failed to initiate system shutdown:\n\n{str(e)}",
+            )
 
 
 class MappingEditorDialog(QtWidgets.QDialog):
