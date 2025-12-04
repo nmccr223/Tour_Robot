@@ -1,5 +1,7 @@
 import json
 import os
+import subprocess
+import platform
 from dataclasses import dataclass, asdict
 from typing import List
 
@@ -9,6 +11,50 @@ from rclpy.node import Node
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from eyes_widget import EyesWidget, EyeMood
+
+
+class InputDeviceDetector:
+    """Detects available input devices (mouse, keyboard) on the system."""
+    
+    def __init__(self):
+        self.has_mouse = False
+        self.has_keyboard = False
+        self.detect_devices()
+    
+    def detect_devices(self):
+        """Detect connected input devices."""
+        if platform.system() == "Windows":
+            self._detect_windows_devices()
+        elif platform.system() == "Linux":
+            self._detect_linux_devices()
+    
+    def _detect_windows_devices(self):
+        """Detect input devices on Windows using Windows API."""
+        try:
+            # Check for mouse using Windows API
+            import ctypes
+            mouse_count = ctypes.windll.user32.GetSystemMetrics(75)  # SM_CMOUSEBUTTONS
+            self.has_mouse = mouse_count > 0
+            
+            # Check for keyboard - typically always present on Windows
+            keyboard_count = ctypes.windll.user32.GetSystemMetrics(26)  # SM_CXKEYBOARDKEYS
+            self.has_keyboard = keyboard_count > 0
+        except Exception as e:
+            print(f"Error detecting Windows input devices: {e}")
+    
+    def _detect_linux_devices(self):
+        """Detect input devices on Linux using /proc/bus/input/devices."""
+        try:
+            with open('/proc/bus/input/devices', 'r') as f:
+                content = f.read()
+                self.has_mouse = 'mouse' in content.lower()
+                self.has_keyboard = 'keyboard' in content.lower()
+        except Exception as e:
+            print(f"Error detecting Linux input devices: {e}")
+    
+    def has_physical_input(self):
+        """Return True if mouse or keyboard detected."""
+        return self.has_mouse or self.has_keyboard
 
 
 @dataclass
@@ -199,6 +245,10 @@ class HmiMainWindow(QtWidgets.QMainWindow):
         self._node = node
         self._model = model
         self._admin_window = None
+        
+        # Detect input devices (mouse, keyboard)
+        self.input_detector = InputDeviceDetector()
+        self.use_keyboard_mouse = self.input_detector.has_physical_input()
 
         self.setWindowTitle("Robot HMI - Location Selector")
         # For a kiosk on the 27" screen you can use showFullScreen().
@@ -395,6 +445,25 @@ class HmiMainWindow(QtWidgets.QMainWindow):
         self._node.get_logger().info("Shutdown service call succeeded")
         return result
 
+    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
+        """Handle keyboard shortcuts when keyboard is detected."""
+        if not self.use_keyboard_mouse:
+            super().keyPressEvent(event)
+            return
+        
+        # Keyboard shortcuts
+        if event.key() == QtCore.Qt.Key_Escape:
+            # Escape key to close/exit (useful for kiosk)
+            pass  # Ignore by default
+        elif event.key() == QtCore.Qt.Key_A and event.modifiers() & QtCore.Qt.ControlModifier:
+            # Ctrl+A: Add location
+            self.add_location_dialog()
+        elif event.key() == QtCore.Qt.Key_Slash:
+            # Forward slash: Open admin menu
+            self.open_admin_window()
+        else:
+            super().keyPressEvent(event)
+
 
 class HmiRosNode(Node):
     """
@@ -421,6 +490,11 @@ class AdminWindow(QtWidgets.QMainWindow):
     def __init__(self, model: LocationModel, parent=None):
         super().__init__(parent)
         self._model = model
+        
+        # Inherit input device detection from parent if available
+        self.use_keyboard_mouse = False
+        if parent and hasattr(parent, 'use_keyboard_mouse'):
+            self.use_keyboard_mouse = parent.use_keyboard_mouse
 
         self.setWindowTitle("Destination Administration")
         self.resize(900, 600)
@@ -701,6 +775,40 @@ class AdminWindow(QtWidgets.QMainWindow):
                 "Shutdown Error",
                 f"Failed to initiate system shutdown:\n\n{str(e)}",
             )
+
+    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
+        """Handle keyboard shortcuts in admin window."""
+        if not self.use_keyboard_mouse:
+            super().keyPressEvent(event)
+            return
+        
+        # Keyboard shortcuts for admin window
+        if event.key() == QtCore.Qt.Key_Escape:
+            # Escape key to close admin window
+            self.close()
+        elif event.key() == QtCore.Qt.Key_N and event.modifiers() & QtCore.Qt.ControlModifier:
+            # Ctrl+N: Add new destination
+            self.add_destination_flow()
+        elif event.key() == QtCore.Qt.Key_R and event.modifiers() & QtCore.Qt.ControlModifier:
+            # Ctrl+R: Rename destination
+            self.rename_destination()
+        elif event.key() == QtCore.Qt.Key_D and event.modifiers() & QtCore.Qt.ControlModifier:
+            # Ctrl+D: Delete destination
+            self.delete_destination()
+        elif event.key() == QtCore.Qt.Key_Up and event.modifiers() & QtCore.Qt.ControlModifier:
+            # Ctrl+Up: Move destination up
+            self.move_destination_up()
+        elif event.key() == QtCore.Qt.Key_Down and event.modifiers() & QtCore.Qt.ControlModifier:
+            # Ctrl+Down: Move destination down
+            self.move_destination_down()
+        elif event.key() == QtCore.Qt.Key_E and event.modifiers() & QtCore.Qt.ControlModifier:
+            # Ctrl+E: Eyes settings
+            self.open_eyes_settings()
+        elif event.key() == QtCore.Qt.Key_S and event.modifiers() & QtCore.Qt.ControlModifier:
+            # Ctrl+S: Shutdown system
+            self.on_shutdown_clicked()
+        else:
+            super().keyPressEvent(event)
 
 
 class MappingEditorDialog(QtWidgets.QDialog):
