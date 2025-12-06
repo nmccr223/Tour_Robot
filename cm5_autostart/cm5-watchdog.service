@@ -1,0 +1,18 @@
+[Unit]
+Description=CM5 Service Watchdog - Monitors and restarts CM5 services
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=tourrobot
+Group=tourrobot
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 /usr/local/bin/tour_robot/cm5_service_watchdog.py --loop 60
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

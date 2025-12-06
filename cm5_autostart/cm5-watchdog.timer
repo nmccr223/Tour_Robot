@@ -1,0 +1,11 @@
+[Unit]
+Description=CM5 Service Watchdog Timer
+Requires=cm5-watchdog.service
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=60s
+Unit=cm5-watchdog.service
+
+[Install]
+WantedBy=timers.target
