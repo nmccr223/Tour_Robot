@@ -24,8 +24,10 @@ setup(
     entry_points={
         'console_scripts': [
             'navigation_poc = main_control.ser8_navigation_poc:main',
+            'main_controller_node = main_control.main_controller_node:main',
             'shutdown_manager_node = main_control.shutdown_manager_node:main',
             'test_scan_publisher = main_control.test_scan_publisher:main',
+            'plc_motor_test = main_control.plc_motor_client:main',
         ],
     },
 )

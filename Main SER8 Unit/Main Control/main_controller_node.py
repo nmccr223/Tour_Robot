@@ -16,7 +16,7 @@ from builtin_interfaces.msg import Time
 # Replace with your AprilTag message type
 from apriltag_msgs.msg import AprilTagDetections  # Example; adjust to your package
 
-from .udp_motor_client import UdpMotorClient
+from .plc_motor_client import PLCMotorClient
 
 
 class MainController(Node):
@@ -40,10 +40,16 @@ class MainController(Node):
         self.max_angular_speed = float(self.get_parameter('max_angular_speed').value)
         self.use_cmd_vel_topic = bool(self.get_parameter('use_cmd_vel_topic').value)
 
-        # Networking to CM5
+        # PLC Motor Controller connection
         motor_host = self.get_parameter('motor_host').value
         motor_port = int(self.get_parameter('motor_port').value)
-        self.motor_client = UdpMotorClient(motor_host, motor_port)
+        self.motor_client = PLCMotorClient(host=motor_host, port=motor_port, timeout=2.0)
+        
+        # Attempt initial connection
+        if not self.motor_client.connect():
+            self.get_logger().warning(f'Failed to connect to PLC at {motor_host}:{motor_port} - will retry automatically')
+        else:
+            self.get_logger().info(f'Connected to PLC motor controller at {motor_host}:{motor_port}')
 
         # Internal state
         self.last_odom: Optional[Odometry] = None
@@ -122,15 +128,27 @@ class MainController(Node):
         v_cmd = max(min(v_cmd, self.max_linear_speed), -self.max_linear_speed)
         w_cmd = max(min(w_cmd, self.max_angular_speed), -self.max_angular_speed)
 
-        # Publish or send to CM5
+        # Publish or send to PLC motor controller
         if self.use_cmd_vel_topic and self.cmd_vel_pub is not None:
             twist = Twist()
             twist.linear.x = v_cmd
             twist.angular.z = w_cmd
             self.cmd_vel_pub.publish(twist)
         else:
+            # Send velocity command to PLC
+            # Normalize velocities to [-1.0, 1.0] range for PLC
+            linear_normalized = v_cmd / self.max_linear_speed if self.max_linear_speed > 0 else 0.0
+            angular_normalized = w_cmd / self.max_angular_speed if self.max_angular_speed > 0 else 0.0
+            
+            if not self.motor_client.set_velocity(linear_normalized, angular_normalized):
+                self.get_logger().warning('Failed to send velocity command to PLC')
+                
+            # Monitor PLC health periodically (every 20 control loops = 1 sec at 20Hz)
+            if self.seq % 20 == 0:
+                if not self.motor_client.is_healthy():
+                    self.get_logger().error('PLC motor controller unhealthy - check emergency stop and drive faults')
+            
             self.seq += 1
-            self.motor_client.send_cmd_vel(self.seq, now, v_cmd, w_cmd)
 
     # --- Core decision logic ---
 
