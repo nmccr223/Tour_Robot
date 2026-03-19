@@ -20,11 +20,16 @@ sudo apt upgrade -y
 sudo reboot
 ```
 
-After reboot, clone this repository (if not already present):
+After reboot, create a workspace folder and clone this repository.
+
+Do not use angle brackets (`<...>`) in the command; Bash interprets them as redirection.
 
 ```bash
-cd ~
-git clone <YOUR_TOUR_ROBOT_REPO_URL> Tour_Robot
+mkdir -p ~/workspace
+cd ~/workspace
+
+# Replace URL with your actual repo URL
+git clone https://github.com/YOUR_ORG/Tour_Robot.git Tour_Robot
 ```
 
 ---
@@ -34,7 +39,7 @@ git clone <YOUR_TOUR_ROBOT_REPO_URL> Tour_Robot
 From the setup folder:
 
 ```bash
-cd ~/Tour_Robot/Main\ SER8\ Unit/ser8-setup
+cd ~/workspace/Tour_Robot/Main\ SER8\ Unit/ser8-setup
 bash scripts/install-dependencies.sh
 ```
 
@@ -55,10 +60,10 @@ Create workspace and copy required packages from this repository:
 ```bash
 mkdir -p ~/ros2_ws/src
 
-cp -r ~/Tour_Robot/robot_msgs ~/ros2_ws/src/
-cp -r ~/Tour_Robot/ld19_utils ~/ros2_ws/src/
-cp -r ~/Tour_Robot/Main\ SER8\ Unit/Main\ Control ~/ros2_ws/src/main_control
-cp -r ~/Tour_Robot/Main\ SER8\ Unit/Launcher ~/ros2_ws/src/Launcher
+cp -r ~/workspace/Tour_Robot/robot_msgs ~/ros2_ws/src/
+cp -r ~/workspace/Tour_Robot/ld19_utils ~/ros2_ws/src/
+cp -r ~/workspace/Tour_Robot/Main\ SER8\ Unit/Main\ Control ~/ros2_ws/src/main_control
+cp -r ~/workspace/Tour_Robot/Main\ SER8\ Unit/Launcher ~/ros2_ws/src/Launcher
 ```
 
 Install package dependencies and build:
@@ -85,7 +90,7 @@ grep -q "source ~/ros2_ws/install/setup.bash" ~/.bashrc || \
 Run on SER8:
 
 ```bash
-cd ~/Tour_Robot/Main\ SER8\ Unit/ser8-setup
+cd ~/workspace/Tour_Robot/Main\ SER8\ Unit/ser8-setup
 bash scripts/setup-ssh-keys.sh
 ```
 
@@ -111,7 +116,7 @@ tourrobot ALL=(ALL) NOPASSWD: /bin/systemctl is-active *
 Run on SER8:
 
 ```bash
-cd ~/Tour_Robot/Main\ SER8\ Unit/ser8-setup
+cd ~/workspace/Tour_Robot/Main\ SER8\ Unit/ser8-setup
 bash scripts/install-watchdog.sh
 bash scripts/install-startup-wrapper.sh
 ```

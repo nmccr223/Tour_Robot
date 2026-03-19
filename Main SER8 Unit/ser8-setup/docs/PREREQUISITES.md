@@ -14,7 +14,7 @@ Use this checklist before running the installation guide.
 
 ## Repository availability
 
-- This repository is present on SER8 at `~/Tour_Robot` (or an equivalent path)
+- This repository is present on SER8 at `~/workspace/Tour_Robot` (or an equivalent path)
 - The following folders exist in the repo:
 	- `Main SER8 Unit/ser8-setup`
 	- `Main SER8 Unit/Main Control`

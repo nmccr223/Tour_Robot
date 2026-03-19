@@ -23,10 +23,10 @@ It covers:
 
 ## Quick start (fresh SER8)
 
-Run from the repository root on SER8:
+Run from the repository root on SER8 (example repo location: `~/workspace/Tour_Robot`):
 
 ```bash
-cd ~/Tour_Robot/Main\ SER8\ Unit/ser8-setup
+cd ~/workspace/Tour_Robot/Main\ SER8\ Unit/ser8-setup
 
 # 1) Install dependencies and ROS2 Jazzy
 bash scripts/install-dependencies.sh
