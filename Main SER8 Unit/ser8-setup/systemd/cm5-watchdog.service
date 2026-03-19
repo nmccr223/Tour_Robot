@@ -1,0 +1,14 @@
+[Unit]
+Description=CM5 Watchdog Service
+After=network.target
+
+[Service]
+Type=simple
+User=tourrobot
+WorkingDirectory=/usr/local/bin/tour_robot
+ExecStart=/usr/bin/python3 /usr/local/bin/tour_robot/cm5_service_watchdog.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

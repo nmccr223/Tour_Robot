@@ -1,0 +1,11 @@
+[Unit]
+Description=CM5 Watchdog Timer
+After=network.target
+
+[Timer]
+OnActiveSec=60s
+OnUnitActiveSec=60s
+Unit=cm5-watchdog.service
+
+[Install]
+WantedBy=timers.target
