@@ -92,7 +92,9 @@ def ensure_ros_env(ros_setup: str | None):
 
 
 def ros2_available(env) -> bool:
-    proc = run(["ros2", "--version"], env=env)
+    # `ros2 --version` is not reliable on all distros/install methods.
+    # `ros2 --help` is a better availability probe for the CLI entrypoint.
+    proc = run(["ros2", "--help"], env=env)
     return proc.returncode == 0
 
 
