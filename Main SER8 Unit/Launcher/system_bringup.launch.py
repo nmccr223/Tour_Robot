@@ -26,7 +26,23 @@ def generate_launch_description() -> LaunchDescription:
             PathJoinSubstitution(
                 [FindPackageShare("depthai_ros_driver"), "launch", "rgbd_pcl.launch.py"]
             )
-        )
+        ),
+        # Keep these explicit so camera bringup is deterministic across SER8 units.
+        launch_arguments=[
+            ("name", "oak"),
+            ("camera_model", "OAK-D"),
+            ("parent_frame", "oak-d-base-frame"),
+            ("cam_pos_x", "0.0"),
+            ("cam_pos_y", "0.0"),
+            ("cam_pos_z", "0.0"),
+            ("cam_roll", "0.0"),
+            ("cam_pitch", "0.0"),
+            ("cam_yaw", "0.0"),
+            ("params_file", "/opt/ros/jazzy/share/depthai_ros_driver/config/rgdb.yaml"),
+            ("use_rviz", "False"),
+            ("rectify_rgb", "True"),
+            ("rs_compat", "False"),
+        ],
     )
 
     main_control_node = Node(

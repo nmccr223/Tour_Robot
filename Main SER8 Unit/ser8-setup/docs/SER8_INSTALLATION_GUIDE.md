@@ -28,7 +28,7 @@ git status -sb
 git pull --ff-only
 # Secondary option to update save files from repository
 git pull origin main 
-git status # To see current update status and check if 
+git status # To see current update status and check if versions match
 ```
 
 If files in your local clone were edited on-device, commit or stash before `git pull`.
@@ -180,45 +180,66 @@ EOF
 
 ### 4d) Validate camera streams with RViz2 visualization
 
-Pointcloud topics are now started by default by:
-- `main_control/system_bringup.launch.py`
-- front camera node (`/front`) with `stereo.i_publish_topic: True` and `pointcloud.enable: True`
-- rear camera node (`/rear`) with `stereo.i_publish_topic: True` and `pointcloud.enable: True`
+PointCloud2 is provided by the verified DepthAI launch included in system bringup:
+- `ros2 launch depthai_ros_driver rgbd_pcl.launch.py`
 
-DepthAI uses **lazy publishing** for pointcloud in this setup: the pipeline is armed on startup and publishes when there is a subscriber (for example `front_oak_processor`, `rear_oak_processor`, `rviz2`, or navigation nodes).
+In this repository, the validated PointCloud2 topic is:
+- `/oak/points`
 
-Start the system and verify topics before opening RViz2:
+Start the system and verify the pointcloud topic before opening RViz2:
 
 ```bash
 start-tour-robot --require-camera-topics
-ros2 topic list | grep -Ei "front/stereo/points|rear/stereo/points|front/depth/color/points|rear/depth/color/points"
+ros2 topic list | grep -E "^/oak/points$"
+ros2 topic echo /oak/points --once
 ```
 
-Expected topics (either naming scheme may appear):
-- `/front/stereo/points` or `/front/depth/color/points`
-- `/rear/stereo/points` or `/rear/depth/color/points`
+If bringup is not running, you can test DepthAI directly:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+ros2 launch depthai_ros_driver rgbd_pcl.launch.py
+```
 
 **Terminal 2: Start RViz2 for point cloud visualization**
 
 ```bash
 source /opt/ros/jazzy/setup.bash
 source ~/ros2_ws/install/setup.bash
-rviz2
+rviz2 -d ~/workspace/Tour_Robot/Main\ SER8\ Unit/Launcher/oak_pointcloud.rviz
 ```
 
-In RViz2:
-1. **Set Fixed Frame** to `front_oak_rgb_frame` (or `rear_oak_rgb_frame` for the rear view)
-2. **Add a PointCloud2 display:**
-   - Click `Add` → `PointCloud2`
-    - Set **Topic** to `/front/stereo/points` (front) or `/rear/stereo/points` (rear)
-    - If those are not present, use `/front/depth/color/points` and `/rear/depth/color/points`
-3. **Adjust the points visualization:**
-   - Increase `Point Size` to 2–3 (for visibility)
-   - Set `Style` to `Squares` or `Flat Squares`
-4. **Look at the point cloud:**
-   - The point cloud should show your environment's geometry
-   - Check for proper depth from the camera forward direction
-   - Verify left/right barrel distortion is minimal
+If the profile is unavailable, configure RViz2 manually:
+1. Set **Fixed Frame** to `oak_rgb_camera_optical_frame`.
+2. Add `PointCloud2` display.
+3. Set **Topic** to `/oak/points`.
+4. Set **Reliability Policy** to `Reliable`.
+5. Set **Durability Policy** to `Transient Local`.
+6. Set **Color Transformer** to `RGB8`.
+
+Expected result:
+- The point cloud should show environment geometry in front of the camera.
+- Data should begin once a subscriber is connected (RViz2, processor nodes, or navigation).
+
+### 4d.1) DepthAI launch arguments used by system bringup
+
+`system_bringup.launch.py` includes `depthai_ros_driver/rgbd_pcl.launch.py` with explicit defaults from `--show-args`:
+
+- `name:=oak`
+- `camera_model:=OAK-D`
+- `parent_frame:=oak-d-base-frame`
+- `cam_pos_x:=0.0`
+- `cam_pos_y:=0.0`
+- `cam_pos_z:=0.0`
+- `cam_roll:=0.0`
+- `cam_pitch:=0.0`
+- `cam_yaw:=0.0`
+- `params_file:=/opt/ros/jazzy/share/depthai_ros_driver/config/rgdb.yaml`
+- `use_rviz:=False`
+- `rectify_rgb:=True`
+- `rs_compat:=False`
+
+These defaults are intentional for baseline operation. Calibrate and tune camera behavior in OAK Viewer as needed.
 
 ### 4e) Quick camera health check
 
