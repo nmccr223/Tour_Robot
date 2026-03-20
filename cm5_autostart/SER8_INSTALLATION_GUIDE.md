@@ -218,6 +218,37 @@ sudo chmod +x /usr/local/bin/tour_robot/ser8_startup.py
 sudo chmod +x /usr/local/bin/start-tour-robot
 ```
 
+### System does not auto-start (manual recovery)
+
+Use this when boot completes but the robot stack or camera point cloud is missing.
+
+```bash
+# 1) Go to repository root
+cd ~/Tour_Robot
+
+# 2) Go to ROS workspace root
+cd ~/ros2_ws
+
+# 3) Source ROS and your workspace
+source /opt/ros/jazzy/setup.bash
+source ~/ros2_ws/install/setup.bash
+
+# 4) Check watchdog/timer status (autostart path)
+systemctl status cm5-watchdog.service cm5-watchdog.timer
+
+# 5) Manually start the Luxonis point cloud stack
+ros2 launch depthai_ros_driver rgbd_pcl.launch.py
+
+# 6) Verify point cloud topics (legacy + current naming)
+ros2 topic list | grep -E "/stereo/points|/oak/points"
+ros2 topic info /stereo/points
+ros2 topic info /oak/points
+```
+
+Command note:
+- If you see `rgdb_pcl.launch.py` in old notes, that is a typo.
+- Use `rgbd_pcl.launch.py`.
+
 ## Uninstallation
 
 ```bash

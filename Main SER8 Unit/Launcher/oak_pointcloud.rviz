@@ -1,0 +1,66 @@
+Panels:
+  - Class: rviz_common/Displays
+    Help Height: 78
+    Name: Displays
+    Property Tree Widget:
+      Expanded:
+        - /Global Options1
+        - /OAK PointCloud2
+      Splitter Ratio: 0.5
+    Tree Height: 420
+  - Class: rviz_common/Views
+    Name: Views
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Alpha: 1
+      Class: rviz_default_plugins/PointCloud2
+      Color Transformer: RGB8
+      Decay Time: 0
+      Enabled: true
+      Name: OAK PointCloud2
+      Position Transformer: XYZ
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.01
+      Style: Flat Squares
+      Topic:
+        Depth: 5
+        Durability Policy: Transient Local
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /oak/points
+      Use Fixed Frame: true
+  Enabled: true
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: oak_rgb_camera_optical_frame
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/Interact
+      Hide Inactive Objects: true
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+    - Class: rviz_default_plugins/FocusCamera
+    - Class: rviz_default_plugins/Measure
+      Line color: 128; 128; 0
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 3
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+      Name: Current View
+      Pitch: 0.785
+      Yaw: 0.785
+Window Geometry:
+  Displays:
+    collapsed: false
+  Height: 900
+  Width: 1400
+  X: 60
+  Y: 60

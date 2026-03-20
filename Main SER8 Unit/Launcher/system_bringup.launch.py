@@ -1,4 +1,8 @@
 from launch import LaunchDescription
+from launch.actions import IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import PathJoinSubstitution
+from launch_ros.substitutions import FindPackageShare
 from launch_ros.actions import Node
 
 
@@ -10,9 +14,20 @@ def generate_launch_description() -> LaunchDescription:
       - Front OAK-D W processor node on the SER8
       - Rear OAK-D Lite processor node on the SER8
 
-    DepthAI camera drivers (depthai-ros) should be launched separately
-    or added here later once their package/topic details are finalized.
+    Includes the verified Luxonis stack launch that provides PointCloud2:
+      - ros2 launch depthai_ros_driver rgbd_pcl.launch.py
+
+    This launch brings up depthai_ros_driver/depthai_filters and
+    robot_state_publisher together so /oak/points is available.
     """
+
+    oak_rgbd_pcl_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution(
+                [FindPackageShare("depthai_ros_driver"), "launch", "rgbd_pcl.launch.py"]
+            )
+        )
+    )
 
     main_control_node = Node(
         package="main_control",
@@ -45,9 +60,9 @@ def generate_launch_description() -> LaunchDescription:
                 "person_label": "person",
             }
         ],
-        # Remap these once actual DepthAI topics are confirmed.
+        # Verified PointCloud2 source topic from depthai_ros_driver rgbd_pcl launch.
         remappings=[
-            ("/front/camera/points", "/stereo/points"),
+            ("/front/camera/points", "/oak/points"),
             ("/front/nn/detections", "/nn/detections"),
         ],
     )
@@ -65,14 +80,15 @@ def generate_launch_description() -> LaunchDescription:
                 "frame_skip": 0,
             }
         ],
-        # Remap these once actual DepthAI topics are confirmed.
+        # Verified PointCloud2 source topic from depthai_ros_driver rgbd_pcl launch.
         remappings=[
-            ("/rear/camera/points", "/stereo/points"),
+            ("/rear/camera/points", "/oak/points"),
             ("/rear/nn/detections", "/nn/detections"),
         ],
     )
 
     return LaunchDescription([
+        oak_rgbd_pcl_launch,
         main_control_node,
         front_oak_processor_node,
         rear_oak_processor_node,

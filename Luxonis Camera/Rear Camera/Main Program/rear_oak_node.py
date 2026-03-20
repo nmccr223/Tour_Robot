@@ -79,7 +79,7 @@ class RearOakProcessor(Node):
         # Subscriptions
         # ------------------------------------------------------------------
         # Rear depth point cloud: topic name will be remapped in the launch file
-        # from whatever depthai-ros publishes (e.g. /stereo/points).
+        # from whatever depthai-ros publishes (e.g. /oak/points).
         self.cloud_sub = self.create_subscription(
             PointCloud2,
             '/rear/camera/points',

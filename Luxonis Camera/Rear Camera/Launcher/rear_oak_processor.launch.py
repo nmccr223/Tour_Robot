@@ -8,8 +8,8 @@ def generate_launch_description():
     Launch file for the rear OAK-D Lite processor node.
 
     Assumes:
-      - A Luxonis depthai-ros node is running and publishing a stereo
-        point cloud on /stereo/points (or another topic you confirm).
+            - A Luxonis depthai_ros_driver rgbd_pcl launch is running and publishing
+                PointCloud2 on /oak/points (or another topic you confirm).
     """
     return LaunchDescription([
         Node(
@@ -25,7 +25,7 @@ def generate_launch_description():
             }],
             remappings=[
                 # Map Luxonis pointcloud to what rear_oak_node expects.
-                ('/rear/camera/points', '/stereo/points'),
+                ('/rear/camera/points', '/oak/points'),
                 # Adjust if you later enable NN for the rear camera.
                 ('/rear/nn/detections', '/nn/detections'),
             ],

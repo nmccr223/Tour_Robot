@@ -10,6 +10,34 @@ Goal:
 
 ---
 
+## 0) Repository update on SER8 (do this first)
+
+Before running setup/troubleshooting commands, make sure the local SER8 clone is current.
+
+```bash
+# Use whichever path exists on this SER8
+if [ -d ~/workspace/Tour_Robot ]; then
+   cd ~/workspace/Tour_Robot
+elif [ -d ~/Tour_Robot ]; then
+   cd ~/Tour_Robot
+else
+   echo "Tour_Robot repository not found in ~/workspace or ~/"
+fi
+
+git status -sb
+git pull --ff-only
+# Secondary option to update save files from repository
+git pull origin main 
+git status # To see current update status and check if 
+```
+
+If files in your local clone were edited on-device, commit or stash before `git pull`.
+
+Related recovery section:
+- `TROUBLESHOOTING.md` -> [System does not auto-start (manual recovery)](TROUBLESHOOTING.md#8-system-does-not-auto-start-manual-recovery)
+
+---
+
 ## 1) Prepare the machine
 
 Log in as the operational user (recommended: `tourrobot`) and update Ubuntu:

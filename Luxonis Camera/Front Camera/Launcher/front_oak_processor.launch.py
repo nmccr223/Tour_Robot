@@ -7,8 +7,8 @@ def generate_launch_description():
     Launch file for the front OAK-D W processor node.
 
     Assumes:
-      - A Luxonis depthai-ros node is already running and publishing a stereo
-        point cloud on /stereo/points and NN detections on /nn/detections
+            - A Luxonis depthai_ros_driver rgbd_pcl launch is running and publishing
+                PointCloud2 on /oak/points and NN detections on /nn/detections
         (adjust these if your actual topics differ).
 
     This launch file:
@@ -27,10 +27,10 @@ def generate_launch_description():
                 'person_label': 'person',
             }],
             remappings=[
-                # Map Luxonis stereo pointcloud to what front_oak_node expects.
+                # Map Luxonis point cloud to what front_oak_node expects.
                 # Left side = topic used inside front_oak_node.py
                 # Right side = topic actually published by depthai-ros.
-                ('/front/camera/points', '/stereo/points'),
+                ('/front/camera/points', '/oak/points'),
 
                 # Adjust this if your NN detections topic has a different name.
                 ('/front/nn/detections', '/nn/detections'),

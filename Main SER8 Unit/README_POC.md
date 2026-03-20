@@ -197,6 +197,29 @@ rviz2
 # Fixed Frame: lidar or base_link
 ```
 
+### OAK-D PointCloud2 (Verified ROS2 Jazzy Setup)
+
+Use the Luxonis launch that brings up the required stack
+(`depthai_ros_driver`, `depthai_filters`, and `robot_state_publisher`):
+
+```bash
+ros2 launch depthai_ros_driver rgbd_pcl.launch.py
+```
+
+Working RViz2 PointCloud2 display values:
+
+- `Fixed Frame`: `oak_rgb_camera_optical_frame`
+- `Topic`: `/oak/points`
+- `Reliability Policy`: `Reliable`
+- `Durability Policy`: `Transient Local`
+- `Color Transformation`: `RGB8`
+
+Repository RViz profile:
+
+```bash
+rviz2 -d "Main SER8 Unit/Launcher/oak_pointcloud.rviz"
+```
+
 ## Algorithm: Vector Field Histogram (VFH)
 
 **How it works:**
