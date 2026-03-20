@@ -37,6 +37,7 @@ from typing import List
 DEFAULT_SERVICES = ["ld19.service", "ld19-stack.service"]
 REQUIRED_NODES = ["/main_controller", "/front_oak_processor", "/rear_oak_processor"]
 REQUIRED_TOPICS = ["/scan"]
+CAMERA_TOPIC_OPTIONS = ["/oak/points", "/front/stereo/points", "/front/depth/color/points", "/rear/stereo/points", "/rear/depth/color/points"]
 FRONT_CAMERA_TOPIC_OPTIONS = ["/front/stereo/points", "/front/depth/color/points"]
 REAR_CAMERA_TOPIC_OPTIONS = ["/rear/stereo/points", "/rear/depth/color/points"]
 
@@ -158,6 +159,9 @@ def wait_for_camera_topics(env, timeout: int = 20) -> bool:
     deadline = time.time() + timeout
     while time.time() < deadline:
         present = set(ros2_list_topics(env))
+        # Preferred unified topic for this project.
+        if "/oak/points" in present:
+            return True
         front_ok = any(topic in present for topic in FRONT_CAMERA_TOPIC_OPTIONS)
         rear_ok = any(topic in present for topic in REAR_CAMERA_TOPIC_OPTIONS)
         if front_ok and rear_ok:
@@ -253,10 +257,13 @@ def main():
     time.sleep(2)  # brief head start
 
     # 6) Confirm nodes come up
-    if not wait_for_nodes(env, REQUIRED_NODES, timeout=25):
-        launch_proc.terminate()
-        sys.exit("Required nodes did not appear; bringup aborted")
-    print("OK    Required nodes are running")
+    if args.camera_test_mode:
+        print("WARN  Camera test mode active; skipping required node gate")
+    else:
+        if not wait_for_nodes(env, REQUIRED_NODES, timeout=25):
+            launch_proc.terminate()
+            sys.exit("Required nodes did not appear; bringup aborted")
+        print("OK    Required nodes are running")
 
     # 7) Validate camera pointcloud topics (required for RViz2 alignment checks)
     print("Checking OAK-D pointcloud topics...")
@@ -265,6 +272,7 @@ def main():
     else:
         hints = [
             "Camera driver may be in lazy-publish mode with no active subscriber.",
+            "Expected unified topic: /oak/points",
             "Expected front topic: /front/stereo/points (or /front/depth/color/points)",
             "Expected rear topic: /rear/stereo/points (or /rear/depth/color/points)",
             "If using depthai-ros, ensure stereo.i_publish_topic:=true and pointcloud.enable:=true",
@@ -277,7 +285,7 @@ def main():
         print("WARN  Camera pointcloud topics not found.")
         print("WARN  " + " ".join(hints))
 
-        fallback_topics = ["/stereo/points", "/front/camera/points", "/rear/camera/points"]
+        fallback_topics = CAMERA_TOPIC_OPTIONS + ["/stereo/points", "/front/camera/points", "/rear/camera/points"]
         if wait_for_any_topics(env, fallback_topics, timeout=3):
             print("INFO  Found fallback pointcloud topic(s). Check your remapping and RViz topic selection.")
 
