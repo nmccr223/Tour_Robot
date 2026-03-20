@@ -50,6 +50,7 @@ rosdep install --from-paths src --ignore-src -r -y
 
 ### Symptom
 - Wrapper exits with setup file missing.
+- Wrapper exits with: `AMENT_TRACE_SETUP_FILES: unbound variable`
 
 ### Checks
 ```bash
@@ -60,9 +61,11 @@ cat /usr/local/bin/start-tour-robot
 
 ### Fix
 ```bash
-cd ~/Tour_Robot/Main\ SER8\ Unit/ser8-setup
+cd ~/workspace/Tour_Robot/Main\ SER8\ Unit/ser8-setup
 bash scripts/install-startup-wrapper.sh
 ```
+
+If you hit the `AMENT_TRACE_SETUP_FILES` error, reinstalling the wrapper is required so the updated script (which safely sources ROS setup files) is copied into `/usr/local/bin/start-tour-robot`.
 
 If your workspace path differs from `~/ros2_ws`, update:
 

@@ -21,8 +21,10 @@ MOTOR_PORT="${MOTOR_PORT:-5005}"
 
 # Source ROS environment
 if [[ -f "$ROS_SETUP" ]]; then
+    set +u
     # shellcheck disable=SC1090
     source "$ROS_SETUP"
+    set -u
     echo "✓ Sourced ROS 2 Jazzy environment"
 else
     echo "✗ ROS 2 setup not found: $ROS_SETUP"
@@ -31,8 +33,10 @@ fi
 
 # Source workspace
 if [[ -f "$WORKSPACE_SETUP" ]]; then
+    set +u
     # shellcheck disable=SC1090
     source "$WORKSPACE_SETUP"
+    set -u
     echo "✓ Sourced workspace environment"
 else
     echo "✗ Workspace setup not found: $WORKSPACE_SETUP"
