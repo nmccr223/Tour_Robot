@@ -36,6 +36,8 @@ from typing import List
 DEFAULT_SERVICES = ["ld19.service", "ld19-stack.service"]
 REQUIRED_NODES = ["/main_controller", "/front_oak_processor", "/rear_oak_processor"]
 REQUIRED_TOPICS = ["/scan"]
+FRONT_CAMERA_TOPIC_OPTIONS = ["/front/stereo/points", "/front/depth/color/points"]
+REAR_CAMERA_TOPIC_OPTIONS = ["/rear/stereo/points", "/rear/depth/color/points"]
 
 
 def run(cmd: List[str], env=None) -> subprocess.CompletedProcess:
@@ -139,6 +141,28 @@ def wait_for_topics(env, topics: List[str], timeout: int = 15) -> bool:
     return False
 
 
+def wait_for_any_topics(env, topic_options: List[str], timeout: int = 15) -> bool:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        present = set(ros2_list_topics(env))
+        if any(topic in present for topic in topic_options):
+            return True
+        time.sleep(1.0)
+    return False
+
+
+def wait_for_camera_topics(env, timeout: int = 20) -> bool:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        present = set(ros2_list_topics(env))
+        front_ok = any(topic in present for topic in FRONT_CAMERA_TOPIC_OPTIONS)
+        rear_ok = any(topic in present for topic in REAR_CAMERA_TOPIC_OPTIONS)
+        if front_ok and rear_ok:
+            return True
+        time.sleep(1.0)
+    return False
+
+
 def main():
     parser = argparse.ArgumentParser(description="SER8 startup orchestrator")
     parser.add_argument("--cm5-host", required=True, help="CM5 IP/hostname")
@@ -149,6 +173,8 @@ def main():
     parser.add_argument("--ros-setup", help="Path to ROS setup.bash to source (optional)")
     parser.add_argument("--no-restart", action="store_true", help="Do not attempt to restart services on CM5")
     parser.add_argument("--no-launch", action="store_true", help="Run checks only; do not launch bringup")
+    parser.add_argument("--require-camera-topics", action="store_true",
+                        help="Fail startup if front/rear OAK-D pointcloud topics are not present")
     parser.add_argument("--ssh-opts", nargs="*", default=["-o", "BatchMode=yes", "-o", "ConnectTimeout=3", "-o", "StrictHostKeyChecking=accept-new"],
                         help="Additional ssh options")
     args = parser.parse_args()
@@ -204,6 +230,29 @@ def main():
         launch_proc.terminate()
         sys.exit("Required nodes did not appear; bringup aborted")
     print("OK    Required nodes are running")
+
+    # 7) Validate camera pointcloud topics (required for RViz2 alignment checks)
+    print("Checking OAK-D pointcloud topics...")
+    if wait_for_camera_topics(env, timeout=20):
+        print("OK    Front and rear camera pointcloud topics detected")
+    else:
+        hints = [
+            "Camera driver may be in lazy-publish mode with no active subscriber.",
+            "Expected front topic: /front/stereo/points (or /front/depth/color/points)",
+            "Expected rear topic: /rear/stereo/points (or /rear/depth/color/points)",
+            "If using depthai-ros, ensure stereo.i_publish_topic:=true and pointcloud.enable:=true",
+            "Start RViz2 or ensure front/rear processor nodes are running to trigger publishing",
+        ]
+        if args.require_camera_topics:
+            launch_proc.terminate()
+            sys.exit("Camera pointcloud topics missing. " + " ".join(hints))
+
+        print("WARN  Camera pointcloud topics not found.")
+        print("WARN  " + " ".join(hints))
+
+        fallback_topics = ["/stereo/points", "/front/camera/points", "/rear/camera/points"]
+        if wait_for_any_topics(env, fallback_topics, timeout=3):
+            print("INFO  Found fallback pointcloud topic(s). Check your remapping and RViz topic selection.")
 
     print("System bringup succeeded. Monitor logs below (Ctrl+C to stop):")
     try:
