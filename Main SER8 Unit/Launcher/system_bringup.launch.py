@@ -10,9 +10,47 @@ def generate_launch_description() -> LaunchDescription:
       - Front OAK-D W processor node on the SER8
       - Rear OAK-D Lite processor node on the SER8
 
-    DepthAI camera drivers (depthai-ros) should be launched separately
-    or added here later once their package/topic details are finalized.
+    This launch file also starts front and rear DepthAI camera drivers.
+    The depthai-ros pointcloud path uses lazy publishing behavior: the
+    pointcloud pipeline arms at startup and publishes when subscribers are
+    present (e.g., front/rear processor nodes, RViz2, or navigation nodes).
     """
+
+    front_oak_driver_node = Node(
+        package="depthai_ros_driver",
+        executable="rgbd_imaging_node",
+        name="front_oak",
+        namespace="front",
+        output="screen",
+        parameters=[
+            {
+                "device_type": "OAK-D-W",
+                "camera_name": "oak",
+                "mode": "depth",
+                "tf_prefix": "front_oak",
+                "stereo.i_publish_topic": True,
+                "pointcloud.enable": True,
+            }
+        ],
+    )
+
+    rear_oak_driver_node = Node(
+        package="depthai_ros_driver",
+        executable="rgbd_imaging_node",
+        name="rear_oak",
+        namespace="rear",
+        output="screen",
+        parameters=[
+            {
+                "device_type": "OAK-D-Lite",
+                "camera_name": "oak",
+                "mode": "depth",
+                "tf_prefix": "rear_oak",
+                "stereo.i_publish_topic": True,
+                "pointcloud.enable": True,
+            }
+        ],
+    )
 
     main_control_node = Node(
         package="main_control",
@@ -45,9 +83,8 @@ def generate_launch_description() -> LaunchDescription:
                 "person_label": "person",
             }
         ],
-        # Remap these once actual DepthAI topics are confirmed.
         remappings=[
-            ("/front/camera/points", "/stereo/points"),
+            ("/front/camera/points", "/front/stereo/points"),
             ("/front/nn/detections", "/nn/detections"),
         ],
     )
@@ -65,14 +102,15 @@ def generate_launch_description() -> LaunchDescription:
                 "frame_skip": 0,
             }
         ],
-        # Remap these once actual DepthAI topics are confirmed.
         remappings=[
-            ("/rear/camera/points", "/stereo/points"),
+            ("/rear/camera/points", "/rear/stereo/points"),
             ("/rear/nn/detections", "/nn/detections"),
         ],
     )
 
     return LaunchDescription([
+        front_oak_driver_node,
+        rear_oak_driver_node,
         main_control_node,
         front_oak_processor_node,
         rear_oak_processor_node,

@@ -139,65 +139,42 @@ Physically connect **both cameras via USB 3.1** to the SER8. OAK-D devices need 
 Verify both cameras are detected:
 
 ```bash
-python3 -c "import depthai as dai; d=dai.Device.getAllAvailableDevices(); print (dir(d[0]))"
+lsusb | grep -Ei "luxonis|movidius|myriad|03e7"
 
-#This command will give all available usb devices attached to the system that work with the depthai library
+python3 << 'EOF'
+import depthai as dai
+devices = dai.Device.getAllAvailableDevices()
+print(f"Found {len(devices)} OAK-D device(s):")
+for d in devices:
+    print(f"  - {d.getMxId()} ({d.getName()})")
+EOF
+```
 
 ### 4d) Validate camera streams with RViz2 visualization
 
-To ensure cameras are aimed and functioning correctly, we'll visualize the depth point clouds.
+Pointcloud topics are now started by default by:
+- `main_control/system_bringup.launch.py`
+- front camera node (`/front`) with `stereo.i_publish_topic: True` and `pointcloud.enable: True`
+- rear camera node (`/rear`) with `stereo.i_publish_topic: True` and `pointcloud.enable: True`
 
-**Terminal 1: Launch depthai-ros driver with both cameras**
+DepthAI uses **lazy publishing** for pointcloud in this setup: the pipeline is armed on startup and publishes when there is a subscriber (for example `front_oak_processor`, `rear_oak_processor`, `rviz2`, or navigation nodes).
 
-Create a test launcher that runs both cameras (front and rear) on their respective USB buses:
+Start the system and verify topics before opening RViz2:
 
 ```bash
-cat > /tmp/test_both_cameras.launch.py << 'EOF'
-from launch import LaunchDescription
-from launch_ros.actions import Node
-
-def generate_launch_description():
-    return LaunchDescription([
-        # Front OAK-D W
-        Node(
-            package='depthai_ros_driver',
-            executable='rgbd_imaging_node',
-            name='front_oak',
-            namespace='front',
-            parameters=[{
-                'device_type': 'OAK-D-W',
-                'camera_name': 'oak',
-                'mode': 'depth',
-                'tf_prefix': 'front_oak',
-            }],
-            output='screen',
-        ),
-        # Rear OAK-D Lite
-        Node(
-            package='depthai_ros_driver',
-            executable='rgbd_imaging_node',
-            name='rear_oak',
-            namespace='rear',
-            parameters=[{
-                'device_type': 'OAK-D-Lite',
-                'camera_name': 'oak',
-                'mode': 'depth',
-                'tf_prefix': 'rear_oak',
-            }],
-            output='screen',
-        ),
-    ])
-EOF
-
-# Source ROS and run
-source /opt/ros/jazzy/setup.bash
-ros2 launch /tmp/test_both_cameras.launch.py
+start-tour-robot --require-camera-topics
+ros2 topic list | grep -Ei "front/stereo/points|rear/stereo/points|front/depth/color/points|rear/depth/color/points"
 ```
+
+Expected topics (either naming scheme may appear):
+- `/front/stereo/points` or `/front/depth/color/points`
+- `/rear/stereo/points` or `/rear/depth/color/points`
 
 **Terminal 2: Start RViz2 for point cloud visualization**
 
 ```bash
 source /opt/ros/jazzy/setup.bash
+source ~/ros2_ws/install/setup.bash
 rviz2
 ```
 
@@ -205,7 +182,8 @@ In RViz2:
 1. **Set Fixed Frame** to `front_oak_rgb_frame` (or `rear_oak_rgb_frame` for the rear view)
 2. **Add a PointCloud2 display:**
    - Click `Add` → `PointCloud2`
-   - Set **Topic** to `/front/depth/color/points` (front) or `/rear/depth/color/points` (rear)
+    - Set **Topic** to `/front/stereo/points` (front) or `/rear/stereo/points` (rear)
+    - If those are not present, use `/front/depth/color/points` and `/rear/depth/color/points`
 3. **Adjust the points visualization:**
    - Increase `Point Size` to 2–3 (for visibility)
    - Set `Style` to `Squares` or `Flat Squares`
