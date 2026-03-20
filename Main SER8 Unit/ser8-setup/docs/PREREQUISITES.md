@@ -7,6 +7,18 @@ Use this checklist before running the installation guide.
 - Fresh install of Ubuntu 24.04 LTS on SER8
 - Network connectivity to internet (for apt/rosdep) and to CM5 (LAN)
 
+## Hardware
+
+### Cameras
+- **Front camera:** OAK-D W (wide stereo, 127° FOV)
+- **Rear camera:** OAK-D Lite (stereo, 90° FOV)
+- Both cameras connected via **USB 3.1 ports** (USB 3 bandwidth required for stereo depth)
+- Cameras have adequate mounting for view alignment (forward for front, backward for rear)
+
+### Other hardware
+- CM5 system connected on LAN (`192.168.10.20` by default)
+- PLC/motor controller on LAN (`192.168.10.2:5005` by default)
+
 ## User and access
 
 - You have a normal user account with sudo rights (recommended username: `tourrobot`)
@@ -19,6 +31,8 @@ Use this checklist before running the installation guide.
 	- `Main SER8 Unit/ser8-setup`
 	- `Main SER8 Unit/Main Control`
 	- `Main SER8 Unit/Launcher`
+	- `Luxonis Camera/Front Camera` (processor node code)
+	- `Luxonis Camera/Rear Camera` (processor node code)
 	- `robot_msgs`
 	- `ld19_utils`
 

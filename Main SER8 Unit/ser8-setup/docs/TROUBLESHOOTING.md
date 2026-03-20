@@ -138,3 +138,130 @@ systemctl status cm5-watchdog.service cm5-watchdog.timer
 journalctl -u cm5-watchdog.service -n 50 --no-pager
 start-tour-robot --no-launch
 ```
+
+## 8) OAK-D camera not detected or not streaming
+
+### Symptom
+- `lsusb` shows no Luxonis devices
+- DepthAI enumeration returns 0 devices
+- Camera appears disconnected
+
+### Checks
+```bash
+# Verify USB detection
+lsusb | grep -i luxonis
+lsusb | grep -i movidius
+
+# Check udev rules applied
+ls -l /etc/udev/rules.d/99-oak-d.rules
+
+# Verify DepthAI SDK
+python3 -c "import depthai as dai; print(dai.Device.getAllAvailableDevices())"
+
+# Check dmesg for USB errors
+dmesg | tail -20 | grep -i "usb\|oak"
+```
+
+### Fix sequence
+1. **Verify USB 3.1 cable and port:**
+   ```bash
+   # Check which USB bus port is being used
+   lsusb -t
+   # Look for High-Speed or SuperSpeed; if a camera shows on "1.5 Mb/s", it's on USB 2.0
+   ```
+
+2. **Try a different USB 3.1 port (direct to chipset, not hub)**
+
+3. **Reload udev rules:**
+   ```bash
+   sudo udevadm control --reload-rules
+   sudo udevadm trigger
+   ```
+
+4. **Check for device firmware issue:**
+   ```bash
+   python3 << 'EOF'
+   import depthai as dai
+   devices = dai.Device.getAllAvailableDevices()
+   for device in devices:
+       print(f"Device {device.getMxId()}: {device.getProductName()}")
+       # Try to open and check if it hangs
+       try:
+           with dai.Device(device) as dev:
+               print("  ✓ Device opened successfully")
+       except Exception as e:
+           print(f"  ✗ Failed to open: {e}")
+   EOF
+   ```
+
+5. **Power cycle both cameras** (unplug for 10 seconds, replug)
+
+## 9) OAK-D camera stream is present but distorted or low quality
+
+### Symptom
+- Point cloud visible in RViz2 but very noisy or sparse
+- Camera output jerky or frame rate is low
+- Depth values seem inverted or unrealistic
+
+### Checks
+```bash
+# Check for USB bandwidth saturation
+cat /sys/kernel/debug/usb/devices | grep -A5 "Luxonis"
+
+# Verify both cameras are not on same USB hub/controller
+lsusb -t
+
+# Check ROS2 message arrival rate
+ros2 topic hz /front/camera/points
+ros2 topic hz /rear/camera/points
+```
+
+### Fix sequence
+1. **Ensure USB 3 bandwidth:** Move rear camera to a different USB 3 port (not the same internal hub as the front camera)
+2. **Reduce image resolution** (if applicable in launch file):
+   ```bash
+   # Edit camera launch params to use lower resolution mode
+   ```
+3. **Check camera lens focus:** OAK-D cameras may need manual lens adjustment; ensure the aperture ring is not obstructing the lens
+4. **Verify proper mounting:** Camera must be fixed in place (vibration causes depth instability)
+
+## 10) RViz2 not showing point cloud or cannot connect to the camera system
+
+### Symptom
+- RViz2 launches but has no PointCloud2 topics to select
+- Terminal shows depthai-ros driver starting but no topics appear
+
+### Checks
+```bash
+# Verify topics being published
+ros2 topic list | grep -i "points\|oak"
+
+# Check if depthai node is actually running
+ros2 node list | grep -i "depthai\|oak"
+
+# Inspect topic details
+ros2 topic info /front/camera/points
+```
+
+### Fix sequence
+1. **Ensure ROS environment is sourced in both terminals:**
+   ```bash
+   source /opt/ros/jazzy/setup.bash
+   source ~/ros2_ws/install/setup.bash
+   ```
+
+2. **Verify depthai-ros is installed:**
+   ```bash
+   ros2 pkg list | grep depthai
+   ```
+
+3. **Launch depthai driver explicitly:**
+   ```bash
+   ros2 launch depthai_ros_driver rgbd.launch.py
+   ```
+
+4. **If still no topics, check depthai driver logs:**
+   ```bash
+   # Look for errors in the launch terminal
+   # Common: camera not detected, wrong resolution, NN model missing
+   ```

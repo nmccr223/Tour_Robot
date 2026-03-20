@@ -31,16 +31,21 @@ cd ~/workspace/Tour_Robot/Main\ SER8\ Unit/ser8-setup
 # 1) Install dependencies and ROS2 Jazzy
 bash scripts/install-dependencies.sh
 
-# 2) Configure SSH trust from SER8 -> CM5
+# 2) Build ROS workspace (see full guide for copy/build commands)
+
+# 3) Install and validate OAK-D cameras (front + rear)
+# - Connect both cameras via USB 3.1
+# - Run DepthAI SDK + depthai-ros setup
+# - Visualize with RViz2 for alignment check
+
+# 4) Configure SSH trust from SER8 -> CM5
 bash scripts/setup-ssh-keys.sh
 
-# 3) Build ROS workspace (see full guide for copy/build commands)
-
-# 4) Install watchdog + startup wrapper
+# 5) Install watchdog + startup wrapper
 bash scripts/install-watchdog.sh
 bash scripts/install-startup-wrapper.sh
 
-# 5) Verify services
+# 6) Verify services
 systemctl status cm5-watchdog.service
 systemctl status cm5-watchdog.timer
 ```
