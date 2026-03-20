@@ -194,6 +194,14 @@ ros2 topic list | grep -E "^/oak/points$"
 ros2 topic echo /oak/points --once
 ```
 
+If SER8 is not connected to CM5/PLC yet (bench/camera-only test), use:
+
+```bash
+start-tour-robot --camera-test-mode --require-camera-topics
+```
+
+This bypasses CM5 ping/service checks, PLC reachability, and `/scan` dependency while still launching `system_bringup.launch.py`.
+
 If bringup is not running, you can test DepthAI directly:
 
 ```bash

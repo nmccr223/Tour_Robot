@@ -16,6 +16,7 @@ Usage examples:
       --motor-host 192.168.10.2 --motor-port 5005
 
   python3 ser8_startup.py --no-launch   # Only run checks, do not launch
+    python3 ser8_startup.py --camera-test-mode   # Skip CM5/PLC/scan checks for camera-only testing
 
 Notes:
 - Assumes passwordless SSH from SER8 to CM5 for service checks/restarts.
@@ -175,11 +176,25 @@ def main():
     parser.add_argument("--ros-setup", help="Path to ROS setup.bash to source (optional)")
     parser.add_argument("--no-restart", action="store_true", help="Do not attempt to restart services on CM5")
     parser.add_argument("--no-launch", action="store_true", help="Run checks only; do not launch bringup")
+    parser.add_argument("--skip-cm5-checks", action="store_true",
+                        help="Skip CM5 ping/service checks (testing mode)")
+    parser.add_argument("--skip-motor-check", action="store_true",
+                        help="Skip PLC/motor host reachability check (testing mode)")
+    parser.add_argument("--skip-scan-check", action="store_true",
+                        help="Skip /scan topic availability check (testing mode)")
+    parser.add_argument("--camera-test-mode", action="store_true",
+                        help="Convenience mode: skip CM5, motor, and /scan checks")
     parser.add_argument("--require-camera-topics", action="store_true",
                         help="Fail startup if front/rear OAK-D pointcloud topics are not present")
     parser.add_argument("--ssh-opts", nargs="*", default=["-o", "BatchMode=yes", "-o", "ConnectTimeout=3", "-o", "StrictHostKeyChecking=accept-new"],
                         help="Additional ssh options")
     args = parser.parse_args()
+
+    # Convenience test mode for camera-only bench testing on SER8.
+    if args.camera_test_mode:
+        args.skip_cm5_checks = True
+        args.skip_motor_check = True
+        args.skip_scan_check = True
 
     # 0) ROS env
     env = ensure_ros_env(args.ros_setup)
@@ -187,36 +202,46 @@ def main():
         sys.exit("ros2 not available in PATH. Source setup or pass --ros-setup")
 
     # 1) Network reachability
-    print(f"Checking CM5 reachability ({args.cm5_host})...")
-    if not ping_host(args.cm5_host):
-        sys.exit("CM5 not reachable (ping failed)")
+    if args.skip_cm5_checks:
+        print("WARN  Skipping CM5 reachability/service checks (--skip-cm5-checks)")
+    else:
+        print(f"Checking CM5 reachability ({args.cm5_host})...")
+        if not ping_host(args.cm5_host):
+            sys.exit("CM5 not reachable (ping failed)")
 
     # 2) Check CM5 services
-    for svc in args.services:
-        if service_active(svc, args.cm5_host, args.cm5_user, args.ssh_opts):
-            print(f"OK    {svc} active on CM5")
-            continue
-        if args.no_restart:
-            sys.exit(f"Service {svc} not active on CM5 and --no-restart set")
-        print(f"WARN  {svc} not active; attempting restart...")
-        if not service_restart(svc, args.cm5_host, args.cm5_user, args.ssh_opts):
-            sys.exit(f"Failed to restart {svc} on CM5 (SSH/sudo/systemctl issue)")
-        time.sleep(1)
-        if not service_active(svc, args.cm5_host, args.cm5_user, args.ssh_opts):
-            sys.exit(f"Service {svc} still not active after restart")
-        print(f"OK    {svc} restarted and active")
+    if not args.skip_cm5_checks:
+        for svc in args.services:
+            if service_active(svc, args.cm5_host, args.cm5_user, args.ssh_opts):
+                print(f"OK    {svc} active on CM5")
+                continue
+            if args.no_restart:
+                sys.exit(f"Service {svc} not active on CM5 and --no-restart set")
+            print(f"WARN  {svc} not active; attempting restart...")
+            if not service_restart(svc, args.cm5_host, args.cm5_user, args.ssh_opts):
+                sys.exit(f"Failed to restart {svc} on CM5 (SSH/sudo/systemctl issue)")
+            time.sleep(1)
+            if not service_active(svc, args.cm5_host, args.cm5_user, args.ssh_opts):
+                sys.exit(f"Service {svc} still not active after restart")
+            print(f"OK    {svc} restarted and active")
 
     # 3) Motor host reachability
-    print(f"Checking motor host {args.motor_host}:{args.motor_port} ...")
-    if not check_tcp(args.motor_host, args.motor_port, timeout=2.0):
-        sys.exit("Motor host/port not reachable")
-    print("OK    Motor host reachable")
+    if args.skip_motor_check:
+        print("WARN  Skipping motor host reachability check (--skip-motor-check)")
+    else:
+        print(f"Checking motor host {args.motor_host}:{args.motor_port} ...")
+        if not check_tcp(args.motor_host, args.motor_port, timeout=2.0):
+            sys.exit("Motor host/port not reachable")
+        print("OK    Motor host reachable")
 
     # 4) ROS topics (/scan) visible
-    print("Checking /scan topic visibility...")
-    if not wait_for_topics(env, REQUIRED_TOPICS, timeout=10):
-        sys.exit("/scan topic not found; ensure CM5 LiDAR is publishing")
-    print("OK    /scan detected")
+    if args.skip_scan_check:
+        print("WARN  Skipping /scan topic check (--skip-scan-check)")
+    else:
+        print("Checking /scan topic visibility...")
+        if not wait_for_topics(env, REQUIRED_TOPICS, timeout=10):
+            sys.exit("/scan topic not found; ensure CM5 LiDAR is publishing")
+        print("OK    /scan detected")
 
     if args.no_launch:
         print("Checks complete; skipping launch (--no-launch)")
