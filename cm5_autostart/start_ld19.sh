@@ -41,7 +41,7 @@ for BAUD in "${BAUDS[@]}"; do
     ros2 run ldlidar_stl_ros2 ldlidar_stl_ros2_node \
       --ros-args \
       -p product_name:="$PRODUCT" \
-      -p topic_name:=scan \
+      -p topic_name:=scan_raw \
       -p port_name:="$DEV" \
       -p port_baudrate:="$BAUD" \
       -p frame_id:=base_laser \

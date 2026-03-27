@@ -9,7 +9,7 @@ Goal:
 4. Validate CM5 -> SER8 topic visibility and add troubleshooting steps
 
 System integration note:
-- CM5 publishes LD19 data (primary topic: /scan).
+- CM5 driver publishes raw LD19 data on /scan_raw; preprocess publishes filtered data on /scan.
 - SER8 performs fusion and motion decisions using separate front/rear OAK streams
   plus CM5 LD19 as a secondary forward-facing safety input.
 
@@ -235,7 +235,7 @@ sudo systemctl restart ld19-stack.service
 ```
 
 Notes:
-- `ld19.service` is the only service that launches the LD19 driver publisher for `/scan`.
+- `ld19.service` is the only service that launches the LD19 driver publisher for `/scan_raw`.
 - `ld19-stack.service` requires `ld19.service` and launches preprocess + monitor only.
 - Current scripts assume workspace path `/home/tourrobotsub/cm5_ws`.
 - If your username/path differs, edit `/usr/local/bin/start_ld19.sh` and `/usr/local/bin/start_ld19_stack.sh`.
@@ -272,7 +272,8 @@ ros2 topic echo /ld19/summary --once
 ```
 
 Expected:
-- `/scan` exists and updates continuously.
+- `/scan_raw` exists and updates continuously from the driver.
+- `/scan` exists and updates continuously from preprocess (rear blocked sector masked).
 - `/ld19/summary` exists from preprocess node.
 - `/health/ld19` exists from monitor node.
 
@@ -296,6 +297,28 @@ If `/scan` does not appear on SER8:
 - Verify CM5 and SER8 use the same `ROS_DOMAIN_ID`.
 - Verify both machines are on reachable network interfaces.
 - Check firewalls or VLAN isolation.
+
+### 6a) New LD19 blocked-sector preprocessing defaults
+
+The preprocess node now masks rear-facing scans before publishing `/scan`.
+
+Defaults in `ld19_autorun.launch.py`:
+- `raw_scan_topic:=/scan_raw`
+- `filtered_scan_topic:=/scan`
+- `blocked_center_deg:=180.0`
+- `blocked_half_width_deg:=90.0` (rear 180 degrees blocked)
+- `blocked_extra_margin_deg:=0.0`
+- `min_valid_range_m:=0.0`
+
+You can tune these at launch time if required:
+
+```bash
+ros2 launch ld19_utils ld19_autorun.launch.py \
+  blocked_center_deg:=180.0 \
+  blocked_half_width_deg:=90.0 \
+  blocked_extra_margin_deg:=5.0 \
+  min_valid_range_m:=0.0
+```
 
 ---
 
