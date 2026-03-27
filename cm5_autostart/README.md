@@ -37,6 +37,10 @@ Requirements
 - Your workspace built and sourceable (e.g., /home/tourrobotsub/cm5_ws)
 - User tourrobotsub in dialout group for serial
 
+Path note
+- CM5 ROS workspace naming does not need to match SER8 naming.
+- Only ensure the path sourced in start_ld19.sh/start_ld19_stack.sh matches the actual CM5 ROS workspace used to build LD19.
+
 Notes
 - Vendor/Product IDs in 99-ld19.rules are set to CP210x (10c4:ea60). Adjust if your device uses different IDs.
 - The driver parameters match your working manual command.

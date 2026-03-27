@@ -1,5 +1,5 @@
 [Unit]
-Description=LD19 LiDAR full stack (driver + preprocess + monitor)
+Description=LD19 LiDAR stack (preprocess + monitor, driver provided by ld19.service)
 After=ld19.service
 Requires=ld19.service
 

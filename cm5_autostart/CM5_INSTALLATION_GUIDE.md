@@ -13,6 +13,13 @@ System integration note:
 - SER8 performs fusion and motion decisions using separate front/rear OAK streams
   plus CM5 LD19 as a secondary forward-facing safety input.
 
+Path naming policy (important):
+- CM5 and SER8 do not need matching workspace names.
+- This repository clone path and the ROS workspace path are independent on CM5:
+  - REPO_ROOT: where Tour_Robot is cloned (examples: ~/workspace/Tour_Robot or ~/Tour_Robot)
+  - ROS_WS: CM5 ROS workspace used to build/run LD19 stack (recommended: ~/cm5_ws)
+- The only strict requirement is consistency: build and startup scripts must point to the same ROS_WS path.
+
 ---
 
 ## 0) Repository update on CM5 (do this first)
@@ -37,6 +44,15 @@ git status
 ```
 
 If files in your local clone were edited on-device, commit or stash before git pull.
+
+Optional: set shell variables so all commands below work with your chosen paths:
+
+```bash
+export REPO_ROOT=~/workspace/Tour_Robot
+export ROS_WS=~/cm5_ws
+```
+
+If you use different names/locations, set them here once and substitute in commands.
 
 ---
 
@@ -109,16 +125,16 @@ source ~/.bashrc
 Create workspace and copy required packages from repository:
 
 ```bash
-mkdir -p ~/cm5_ws/src
+mkdir -p "$ROS_WS/src"
 
-cp -r ~/workspace/Tour_Robot/robot_msgs ~/cm5_ws/src/
-cp -r ~/workspace/Tour_Robot/ld19_utils ~/cm5_ws/src/
+cp -r "$REPO_ROOT/robot_msgs" "$ROS_WS/src/"
+cp -r "$REPO_ROOT/ld19_utils" "$ROS_WS/src/"
 ```
 
 Install external LD19 driver package (required by launch file):
 
 ```bash
-cd ~/cm5_ws/src
+cd "$ROS_WS/src"
 # Package expected by launch: ldlidar_stl_ros2
 # Replace URL/tag if your team uses a specific fork.
 git clone https://github.com/ldrobotSensorTeam/ldlidar_stl_ros2.git
@@ -127,7 +143,7 @@ git clone https://github.com/ldrobotSensorTeam/ldlidar_stl_ros2.git
 Install dependencies and build:
 
 ```bash
-cd ~/cm5_ws
+cd "$ROS_WS"
 source /opt/ros/jazzy/setup.bash
 rosdep install --from-paths src --ignore-src -r -y
 colcon build --symlink-install --packages-select robot_msgs ld19_utils ldlidar_stl_ros2
@@ -136,22 +152,62 @@ colcon build --symlink-install --packages-select robot_msgs ld19_utils ldlidar_s
 Source workspace overlay now and on every shell:
 
 ```bash
-source ~/cm5_ws/install/setup.bash
-grep -q "source ~/cm5_ws/install/setup.bash" ~/.bashrc || \
-  echo "source ~/cm5_ws/install/setup.bash" >> ~/.bashrc
+source "$ROS_WS/install/setup.bash"
+grep -q "source $ROS_WS/install/setup.bash" ~/.bashrc || \
+  echo "source $ROS_WS/install/setup.bash" >> ~/.bashrc
+```
+
+### 3a) If you change CM5 ROS workspace name/path
+
+Use this if you want a custom ROS workspace path (for example `~/cm5_ros` instead of `~/cm5_ws`).
+
+1) Set your target path and build there:
+
+```bash
+export ROS_WS=~/cm5_ros
+mkdir -p "$ROS_WS/src"
+cp -r "$REPO_ROOT/robot_msgs" "$ROS_WS/src/"
+cp -r "$REPO_ROOT/ld19_utils" "$ROS_WS/src/"
+cd "$ROS_WS/src"
+git clone https://github.com/ldrobotSensorTeam/ldlidar_stl_ros2.git
+cd "$ROS_WS"
+source /opt/ros/jazzy/setup.bash
+rosdep install --from-paths src --ignore-src -r -y
+colcon build --symlink-install --packages-select robot_msgs ld19_utils ldlidar_stl_ros2
+```
+
+2) Ensure CM5 startup scripts source the same ROS workspace:
+
+```bash
+sudo nano /usr/local/bin/start_ld19.sh
+sudo nano /usr/local/bin/start_ld19_stack.sh
+```
+
+Update the workspace source line in both scripts to your ROS_WS path, for example:
+
+```bash
+source /home/tourrobotsub/cm5_ros/install/setup.bash
+```
+
+3) Restart services after path change:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart ld19.service
+sudo systemctl restart ld19-stack.service
 ```
 
 ---
 
 ## 4) Install LD19 auto-start runtime files
 
-**Workspace:** ~/workspace/Tour_Robot/cm5_autostart
+**Workspace:** $REPO_ROOT/cm5_autostart
 **Machine:** CM5
 
 Install udev rule, startup scripts, and services:
 
 ```bash
-cd ~/workspace/Tour_Robot/cm5_autostart
+cd "$REPO_ROOT/cm5_autostart"
 
 sudo cp 99-ld19.rules /etc/udev/rules.d/
 sudo cp start_ld19.sh /usr/local/bin/
@@ -177,7 +233,8 @@ sudo systemctl restart ld19-stack.service
 ```
 
 Notes:
-- `ld19-stack.service` requires `ld19.service` and starts preprocess + monitor.
+- `ld19.service` is the only service that launches the LD19 driver publisher for `/scan`.
+- `ld19-stack.service` requires `ld19.service` and launches preprocess + monitor only.
 - Current scripts assume workspace path `/home/tourrobotsub/cm5_ws`.
 - If your username/path differs, edit `/usr/local/bin/start_ld19.sh` and `/usr/local/bin/start_ld19_stack.sh`.
 
@@ -356,6 +413,31 @@ source /opt/ros/jazzy/setup.bash
 source ~/cm5_ws/install/setup.bash
 ros2 run ld19_utils ld19_preprocess_node
 ros2 run ld19_utils ld19_monitor_node
+```
+
+### F) `/scan` has two publishers or unstable Hz (duplicate driver)
+
+Run:
+
+```bash
+ros2 topic info /scan -v
+systemctl status ld19.service
+systemctl status ld19-stack.service
+ps -ef | grep -Ei "ldlidar_stl_ros2|ldlidar_publisher|ld19" | grep -v grep
+```
+
+Expected steady state:
+- One `/scan` publisher process from `ld19.service`.
+- `ld19-stack.service` running preprocess + monitor only.
+
+If two LD19 driver processes are present:
+- Stop manual launch terminals first.
+- Restart services cleanly:
+
+```bash
+sudo systemctl restart ld19.service
+sudo systemctl restart ld19-stack.service
+ros2 topic info /scan -v
 ```
 
 ---
