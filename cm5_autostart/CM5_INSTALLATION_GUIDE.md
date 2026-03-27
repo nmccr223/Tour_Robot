@@ -31,11 +31,13 @@ Before running setup/troubleshooting commands, make sure the local CM5 clone is 
 if [ -d ~/workspace/Tour_Robot ]; then
    cd ~/workspace/Tour_Robot
 elif [ -d ~/Tour_Robot ]; then
-   cd ~/Tour_Robot
+   cd ~/cm5_ws 
+   #Compute Module 5's workspace was originally built with the name cm5_ws and used USB thumb drives to transfer files. The primary workspace of the project is still in this format within the CM5. /workspace/Tour_Robot does exist however and is used as the repository save location. This was done due to permissions issues when originally trying to update the /cm5_ws and has been left like this to avoid rebuilding the workspace from scratch. All ROS2 Jazzy related files are saved to /cm5_ws and should be sourced from here.
 else
    echo "Tour_Robot repository not found in ~/workspace or ~/"
 fi
 
+# Ensure you are in /cm5_ws/src when doing this using command cd ~/cm5_ws/src/
 git status -sb
 git pull --ff-only
 # Secondary option to update save files from repository
@@ -350,6 +352,7 @@ dmesg | tail -n 80
 ls -l /dev/ttyUSB*
 sudo udevadm info -a -n /dev/ttyUSB0 | head -n 60
 ```
+# USB devices are setup to automatically be detected by the system by default. CM5 IO hub being used only has USB0 and USB1.
 
 Actions:
 - Confirm adapter vendor/product IDs match `99-ld19.rules` (default CP210x 10c4:ea60).
@@ -392,6 +395,7 @@ ros2 run ldlidar_stl_ros2 ldlidar_stl_ros2_node --ros-args \
 If manual run works but service does not:
 - Compare environment/path differences between interactive shell and systemd service.
 - Confirm `User=` in service has access to workspace files.
+- Confirm that admin level permissions have also been set.
 
 ### D) /scan present on CM5 but not visible on SER8
 
