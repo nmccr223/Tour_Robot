@@ -2,6 +2,10 @@
 
 Use this guide when rebuilding a SER8 from scratch.
 
+Current startup status:
+- Full robot bringup is currently manual on SER8 (`start-tour-robot` must be run by an operator).
+- Full automatic power-on autostart is planned and should be implemented in a near-future update.
+
 Goal:
 1. Install required OS modules and ROS 2 Jazzy
 2. Assemble and build the Tour Robot ROS workspace
@@ -99,6 +103,8 @@ mkdir -p ~/ros2_ws/src
 
 cp -r ~/workspace/Tour_Robot/robot_msgs ~/ros2_ws/src/
 cp -r ~/workspace/Tour_Robot/ld19_utils ~/ros2_ws/src/
+cp -r ~/workspace/Tour_Robot/front_oak_processor ~/ros2_ws/src/
+cp -r ~/workspace/Tour_Robot/rear_oak_processor ~/ros2_ws/src/
 cp -r ~/workspace/Tour_Robot/Main\ SER8\ Unit/Main\ Control ~/ros2_ws/src/main_control
 cp -r ~/workspace/Tour_Robot/Main\ SER8\ Unit/Launcher ~/ros2_ws/src/Launcher
 ```
@@ -109,7 +115,7 @@ Install package dependencies and build:
 cd ~/ros2_ws
 source /opt/ros/jazzy/setup.bash
 rosdep install --from-paths src --ignore-src -r -y
-colcon build --symlink-install --packages-select robot_msgs ld19_utils main_control
+colcon build --symlink-install --packages-select robot_msgs ld19_utils front_oak_processor rear_oak_processor main_control
 ```
 
 Source workspace overlay now and on every new shell:

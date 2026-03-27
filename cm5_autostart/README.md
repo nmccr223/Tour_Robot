@@ -1,5 +1,8 @@
 LD19 LiDAR Auto-Start (CM5 / Ubuntu 24.04 + ROS 2 Jazzy)
 
+Full setup and recovery guide:
+- See `CM5_INSTALLATION_GUIDE.md` in this folder for end-to-end CM5 install, validation, and troubleshooting.
+
 This folder contains the scripts and configuration to automatically start the LD19 LiDAR driver whenever the device is plugged (ttyUSB0/ttyUSB1), and at boot. It uses a udev rule to create a stable symlink /dev/ld19 and a systemd service to launch the ROS 2 driver with your working parameters.
 
 Files

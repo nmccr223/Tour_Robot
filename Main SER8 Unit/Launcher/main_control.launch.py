@@ -19,6 +19,17 @@ def generate_launch_description():
                 'motor_host': '192.168.10.2',
                 'motor_port': 5005,
                 'use_cmd_vel_topic': False,
+                'camera_summary_timeout_sec': 0.75,
+                'prefer_oak_primary': True,
+                'allow_reverse_motion': True,
+                'reverse_heading_threshold_deg': 120.0,
+                'max_reverse_speed': 0.25,
+                'require_rear_summary_for_reverse': True,
+                'ld19_forward_stop_cone_deg': 20.0,
+                'ld19_reverse_stop_cone_deg': 20.0,
+                'ld19_forward_slow_cone_deg': 45.0,
+                'ld19_reverse_slow_cone_deg': 45.0,
+                'enable_fusion_debug_topic': True,
             }]
         )
     ])

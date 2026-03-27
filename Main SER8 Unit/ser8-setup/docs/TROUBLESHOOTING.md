@@ -2,6 +2,16 @@
 
 This guide covers the most common recovery actions after a fresh reinstall.
 
+## Startup Status (Temporary)
+
+Current behavior:
+- Full Tour Robot bringup on SER8 is currently manual.
+- An operator must log in and run `start-tour-robot` from a keyboard/session.
+
+Near-term placeholder:
+- Implement full system autostart on SER8 power-on (automatic bringup without manual keyboard command).
+- Until that is implemented, treat manual `start-tour-robot` execution as a required startup step.
+
 ## 0) Repository update on SER8 (do this first)
 
 Before running troubleshooting commands, update the local clone on SER8.
@@ -318,3 +328,102 @@ ros2 topic info /stereo/points
    - Topic: `/oak/points`
    - Reliability: `Reliable`
    - Durability: `Transient Local`
+
+## 12) Validate Sensor Outputs, Fusion State, and Navigation Feed (SER8)
+
+Use this section before field testing to verify:
+- each sensor output is alive,
+- fused decision state is being produced,
+- and fused inputs are connected to the navigation controller.
+
+### A) Confirm OAK-D and LD19 outputs are present on SER8
+
+```bash
+source /opt/ros/jazzy/setup.bash
+source ~/ros2_ws/install/setup.bash
+
+# Camera streams and summaries
+ros2 topic list | grep -E "^/front/oak/points$|^/rear/oak/points$|^/front/oak/detections$|^/rear/oak/detections$|^/front/oak/summary$|^/rear/oak/summary$"
+
+# LD19 streams expected to be visible from CM5
+ros2 topic list | grep -E "^/scan$|^/ld19/summary$|^/health/ld19$"
+```
+
+If expected topics are missing:
+- Start/repair CM5 LD19 services first, then recheck on SER8.
+- Verify ROS_DOMAIN_ID and network reachability between SER8 and CM5.
+
+### B) Confirm data rates and sample messages
+
+```bash
+ros2 topic hz /front/oak/summary
+ros2 topic hz /rear/oak/summary
+ros2 topic hz /scan
+
+ros2 topic echo /front/oak/summary --once
+ros2 topic echo /rear/oak/summary --once
+ros2 topic echo /scan --once
+```
+
+Expected:
+- Front/rear summaries update continuously.
+- `/scan` updates continuously.
+- Message samples show valid frame IDs and distance fields.
+
+### C) Confirm fused decision state output
+
+The controller publishes fused debug output on `/fusion/source_state`.
+This topic is `std_msgs/String` carrying JSON for quick diagnostics.
+
+```bash
+ros2 topic hz /fusion/source_state
+ros2 topic echo /fusion/source_state
+```
+
+Look for fields such as:
+- `mode` (`forward` or `reverse`)
+- `primary_sensor` (`front_oak_summary` or `rear_oak_summary`)
+- `secondary_sensor` (`ld19_scan`)
+- `hard_stop_active`, `slow_zone_active`
+- `cmd_linear`, `cmd_angular`
+
+### D) Confirm fused inputs are feeding navigation node
+
+```bash
+ros2 node list | grep main_controller
+ros2 node info /main_controller
+
+ros2 topic info /front/oak/summary -v
+ros2 topic info /rear/oak/summary -v
+ros2 topic info /scan -v
+```
+
+Expected:
+- `/main_controller` exists.
+- `/main_controller` appears as a subscriber to front summary, rear summary, and `/scan`.
+
+### E) Functional forward/reverse delegation check
+
+1. Keep this running:
+   ```bash
+   ros2 topic echo /fusion/source_state
+   ```
+2. Trigger a forward-driving scenario:
+   - Expect `mode: forward`
+   - Expect `primary_sensor: front_oak_summary`
+   - Expect `secondary_sensor: ld19_scan`
+3. Trigger a reverse-driving scenario:
+   - Expect `mode: reverse`
+   - Expect `primary_sensor: rear_oak_summary`
+   - Expect `secondary_sensor: ld19_scan`
+
+If delegation does not match expected mode:
+- Verify goal direction and reverse threshold parameters in launch config.
+- Verify rear summary freshness if reverse is blocked by policy.
+
+### F) Disable fusion debug topic when not needed
+
+The debug topic can be disabled at runtime by setting:
+- `enable_fusion_debug_topic:=False`
+
+This removes `/fusion/source_state` publishing without changing core navigation behavior.

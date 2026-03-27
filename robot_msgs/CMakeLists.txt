@@ -14,6 +14,7 @@ find_package(rosidl_default_generators REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 
 set(msg_files
+  "msg/FrontCameraSummary.msg"
   "msg/LidarScanSummary.msg"
 )
 

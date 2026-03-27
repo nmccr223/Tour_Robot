@@ -14,11 +14,20 @@ def generate_launch_description() -> LaunchDescription:
       - Front OAK-D W processor node on the SER8
       - Rear OAK-D Lite processor node on the SER8
 
-    Includes the verified Luxonis stack launch that provides PointCloud2:
+        Includes the verified Luxonis stack launch that provides PointCloud2:
       - ros2 launch depthai_ros_driver rgbd_pcl.launch.py
 
     This launch brings up depthai_ros_driver/depthai_filters and
     robot_state_publisher together so /oak/points is available.
+
+        IMPORTANT FOR DUAL-CAMERA OPERATION:
+        - The front and rear processor nodes now expect dedicated camera streams:
+            /front/oak/points + /front/oak/detections
+            /rear/oak/points  + /rear/oak/detections
+        - Ensure your camera driver stack publishes these topic pairs separately.
+        - Main controller delegates motion safety by direction:
+            forward -> front summary primary, LD19 secondary
+            reverse -> rear summary primary (rear freshness can be required)
     """
 
     oak_rgbd_pcl_launch = IncludeLaunchDescription(
@@ -60,6 +69,17 @@ def generate_launch_description() -> LaunchDescription:
                 "motor_host": "192.168.10.2",
                 "motor_port": 5005,
                 "use_cmd_vel_topic": False,
+                "camera_summary_timeout_sec": 0.75,
+                "prefer_oak_primary": True,
+                "allow_reverse_motion": True,
+                "reverse_heading_threshold_deg": 120.0,
+                "max_reverse_speed": 0.25,
+                "require_rear_summary_for_reverse": True,
+                "ld19_forward_stop_cone_deg": 20.0,
+                "ld19_reverse_stop_cone_deg": 20.0,
+                "ld19_forward_slow_cone_deg": 45.0,
+                "ld19_reverse_slow_cone_deg": 45.0,
+                "enable_fusion_debug_topic": True,
             }
         ],
     )
@@ -74,12 +94,10 @@ def generate_launch_description() -> LaunchDescription:
                 "fov_deg": 60.0,
                 "max_distance": 5.0,
                 "person_label": "person",
+                "input_cloud_topic": "/front/oak/points",
+                "input_detections_topic": "/front/oak/detections",
+                "output_summary_topic": "/front/oak/summary",
             }
-        ],
-        # Verified PointCloud2 source topic from depthai_ros_driver rgbd_pcl launch.
-        remappings=[
-            ("/front/camera/points", "/oak/points"),
-            ("/front/nn/detections", "/nn/detections"),
         ],
     )
 
@@ -94,12 +112,10 @@ def generate_launch_description() -> LaunchDescription:
                 "max_distance": 3.0,
                 "person_label": "person",
                 "frame_skip": 0,
+                "input_cloud_topic": "/rear/oak/points",
+                "input_detections_topic": "/rear/oak/detections",
+                "output_summary_topic": "/rear/oak/summary",
             }
-        ],
-        # Verified PointCloud2 source topic from depthai_ros_driver rgbd_pcl launch.
-        remappings=[
-            ("/rear/camera/points", "/oak/points"),
-            ("/rear/nn/detections", "/nn/detections"),
         ],
     )
 
