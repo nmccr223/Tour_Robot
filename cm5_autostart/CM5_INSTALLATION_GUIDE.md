@@ -78,7 +78,7 @@ mkdir -p ~/workspace
 cd ~/workspace
 
 # Replace URL with your actual repo URL
-git clone https://github.com/YOUR_ORG/Tour_Robot.git Tour_Robot
+git clone https://github.com/nmccr223/Tour_Robot.git Tour_Robot
 ```
 
 ---
