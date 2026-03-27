@@ -31,13 +31,13 @@ Before running setup/troubleshooting commands, make sure the local CM5 clone is 
 if [ -d ~/workspace/Tour_Robot ]; then
    cd ~/workspace/Tour_Robot
 elif [ -d ~/Tour_Robot ]; then
-   cd ~/cm5_ws 
+   cd ~/Tour_Robot
    #Compute Module 5's workspace was originally built with the name cm5_ws and used USB thumb drives to transfer files. The primary workspace of the project is still in this format within the CM5. /workspace/Tour_Robot does exist however and is used as the repository save location. This was done due to permissions issues when originally trying to update the /cm5_ws and has been left like this to avoid rebuilding the workspace from scratch. All ROS2 Jazzy related files are saved to /cm5_ws and should be sourced from here.
 else
    echo "Tour_Robot repository not found in ~/workspace or ~/"
 fi
 
-# Ensure you are in /cm5_ws/src when doing this using command cd ~/cm5_ws/src/
+# Ensure you are in the repository root when doing this (either ~/workspace/Tour_Robot or ~/Tour_Robot)
 git status -sb
 git pull --ff-only
 # Secondary option to update save files from repository
@@ -263,10 +263,12 @@ Confirm ROS topics on CM5:
 
 ```bash
 source /opt/ros/jazzy/setup.bash
-source ~/cm5_ws/install/setup.bash
+source $ROS_WS/install/setup.bash
 
-ros2 topic list | grep -E "^/scan$|^/ld19/summary$|^/health/ld19$"
+ros2 topic list | grep -E "^/scan_raw$|^/scan$|^/ld19/summary$|^/health/ld19$"
+ros2 topic hz /scan_raw
 ros2 topic hz /scan
+ros2 topic echo /scan_raw --once
 ros2 topic echo /scan --once
 ros2 topic echo /ld19/summary --once
 ```
@@ -396,7 +398,7 @@ Actions:
 
 ```bash
 source /opt/ros/jazzy/setup.bash
-source ~/cm5_ws/install/setup.bash
+source $ROS_WS/install/setup.bash
 /usr/local/bin/start_ld19.sh
 ```
 
@@ -404,11 +406,11 @@ source ~/cm5_ws/install/setup.bash
 
 ```bash
 source /opt/ros/jazzy/setup.bash
-source ~/cm5_ws/install/setup.bash
+source $ROS_WS/install/setup.bash
 
 ros2 run ldlidar_stl_ros2 ldlidar_stl_ros2_node --ros-args \
   -p product_name:=LDLiDAR_LD19 \
-  -p topic_name:=scan \
+  -p topic_name:=scan_raw \
   -p port_name:=/dev/ld19 \
   -p port_baudrate:=230400 \
   -p frame_id:=base_laser \
@@ -432,12 +434,12 @@ Actions:
 
 Actions:
 - Check `ld19-stack.service` status/logs.
-- Verify `ld19_utils` built in `~/cm5_ws`.
+- Verify `ld19_utils` built in `$ROS_WS`.
 - Confirm entry points resolve:
 
 ```bash
 source /opt/ros/jazzy/setup.bash
-source ~/cm5_ws/install/setup.bash
+source $ROS_WS/install/setup.bash
 ros2 run ld19_utils ld19_preprocess_node
 ros2 run ld19_utils ld19_monitor_node
 ```
@@ -454,7 +456,8 @@ ps -ef | grep -Ei "ldlidar_stl_ros2|ldlidar_publisher|ld19" | grep -v grep
 ```
 
 Expected steady state:
-- One `/scan` publisher process from `ld19.service`.
+- One `/scan_raw` publisher process from `ld19.service`.
+- One `/scan` publisher process from preprocess node (in `ld19-stack.service`).
 - `ld19-stack.service` running preprocess + monitor only.
 
 If two LD19 driver processes are present:
@@ -476,7 +479,7 @@ Use this after a failed boot or after large config changes.
 ```bash
 # 1) Source ROS + workspace
 source /opt/ros/jazzy/setup.bash
-source ~/cm5_ws/install/setup.bash
+source $ROS_WS/install/setup.bash
 
 # 2) Restart services in order
 sudo systemctl daemon-reload
@@ -485,7 +488,8 @@ sleep 2
 sudo systemctl restart ld19-stack.service
 
 # 3) Validate topics
-ros2 topic list | grep -E "^/scan$|^/ld19/summary$|^/health/ld19$"
+ros2 topic list | grep -E "^/scan_raw$|^/scan$|^/ld19/summary$|^/health/ld19$"
+ros2 topic hz /scan_raw
 ros2 topic hz /scan
 ```
 
