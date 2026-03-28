@@ -22,42 +22,6 @@ Path naming policy (important):
 
 ---
 
-## 0) Repository update on CM5 (do this first)
-
-Before running setup/troubleshooting commands, make sure the local CM5 clone is current.
-
-```bash
-# Use whichever path exists on this CM5
-if [ -d ~/workspace/Tour_Robot ]; then
-   cd ~/workspace/Tour_Robot
-elif [ -d ~/Tour_Robot ]; then
-   cd ~/Tour_Robot
-   #Compute Module 5's workspace was originally built with the name cm5_ws and used USB thumb drives to transfer files. The primary workspace of the project is still in this format within the CM5. /workspace/Tour_Robot does exist however and is used as the repository save location. This was done due to permissions issues when originally trying to update the /cm5_ws and has been left like this to avoid rebuilding the workspace from scratch. All ROS2 Jazzy related files are saved to /cm5_ws and should be sourced from here.
-else
-   echo "Tour_Robot repository not found in ~/workspace or ~/"
-fi
-
-# Ensure you are in the repository root when doing this (either ~/workspace/Tour_Robot or ~/Tour_Robot)
-git status -sb
-git pull --ff-only
-# Secondary option to update save files from repository
-git pull origin main
-git status
-```
-
-If files in your local clone were edited on-device, commit or stash before git pull.
-
-Optional: set shell variables so all commands below work with your chosen paths:
-
-```bash
-export REPO_ROOT=~/workspace/Tour_Robot
-export ROS_WS=~/cm5_ws
-```
-
-If you use different names/locations, set them here once and substitute in commands.
-
----
-
 ## 1) Prepare the machine
 
 **Workspace:** ~ (home directory)
@@ -79,6 +43,10 @@ cd ~/workspace
 
 # Replace URL with your actual repo URL
 git clone https://github.com/nmccr223/Tour_Robot.git Tour_Robot
+# Check to make sure repo downloaded correctly 
+cd ~/workspace/Tour_Robot
+git status -sb
+git pull --ff-only  # Should show "Already up to date."
 ```
 
 ---
@@ -115,11 +83,20 @@ Source ROS setup in future shells:
 grep -q "source /opt/ros/jazzy/setup.bash" ~/.bashrc || \
   echo "source /opt/ros/jazzy/setup.bash" >> ~/.bashrc
 source ~/.bashrc
+
+# Verify ROS setup loaded correctly
+echo $ROS_DISTRO       # Expected: jazzy
+echo $ROS_VERSION      # Expected: non-empty version
+which ros2             # Expected: /opt/ros/jazzy/bin/ros2
+ros2 --version
 ```
 
 ---
 
 ## 3) Build the CM5 ROS 2 workspace
+
+You can run this section from any directory. Running `cd` first is optional.
+What matters is setting `REPO_ROOT` to the cloned repo and `ROS_WS` to the ROS workspace path.
 
 **Workspace:** ~/cm5_ws
 **Machine:** CM5
@@ -127,19 +104,38 @@ source ~/.bashrc
 Create workspace and copy required packages from repository:
 
 ```bash
+cd ~/workspace/Tour_Robot
+export REPO_ROOT=~/workspace/Tour_Robot
+export ROS_WS=~/cm5_ws
 mkdir -p "$ROS_WS/src"
+cd "$ROS_WS"
 
 cp -r "$REPO_ROOT/robot_msgs" "$ROS_WS/src/"
 cp -r "$REPO_ROOT/ld19_utils" "$ROS_WS/src/"
+
+# Sanity checks
+echo $REPO_ROOT
+echo $ROS_WS
+pwd
+ls "$ROS_WS/src"
 ```
 
 Install external LD19 driver package (required by launch file):
 
 ```bash
+# Clean any accidental top-level clone (must keep packages under src/ only)
+if [ -d "$ROS_WS/ldlidar_stl_ros2" ]; then
+  mv "$ROS_WS/ldlidar_stl_ros2" "$HOME/ldlidar_stl_ros2_backup_$(date +%Y%m%d_%H%M%S)"
+fi
+
 cd "$ROS_WS/src"
 # Package expected by launch: ldlidar_stl_ros2
 # Replace URL/tag if your team uses a specific fork.
-git clone https://github.com/ldrobotSensorTeam/ldlidar_stl_ros2.git
+if [ ! -d ldlidar_stl_ros2 ]; then
+  git clone https://github.com/ldrobotSensorTeam/ldlidar_stl_ros2.git
+else
+  git -C ldlidar_stl_ros2 pull --ff-only
+fi
 ```
 
 Install dependencies and build:
@@ -147,6 +143,10 @@ Install dependencies and build:
 ```bash
 cd "$ROS_WS"
 source /opt/ros/jazzy/setup.bash
+
+# Optional check: ensure package appears only once
+colcon list | grep ldlidar_stl_ros2
+
 rosdep install --from-paths src --ignore-src -r -y
 colcon build --symlink-install --packages-select robot_msgs ld19_utils ldlidar_stl_ros2
 ```
@@ -170,8 +170,17 @@ export ROS_WS=~/cm5_ros
 mkdir -p "$ROS_WS/src"
 cp -r "$REPO_ROOT/robot_msgs" "$ROS_WS/src/"
 cp -r "$REPO_ROOT/ld19_utils" "$ROS_WS/src/"
+
+if [ -d "$ROS_WS/ldlidar_stl_ros2" ]; then
+  mv "$ROS_WS/ldlidar_stl_ros2" "$HOME/ldlidar_stl_ros2_backup_$(date +%Y%m%d_%H%M%S)"
+fi
+
 cd "$ROS_WS/src"
-git clone https://github.com/ldrobotSensorTeam/ldlidar_stl_ros2.git
+if [ ! -d ldlidar_stl_ros2 ]; then
+  git clone https://github.com/ldrobotSensorTeam/ldlidar_stl_ros2.git
+else
+  git -C ldlidar_stl_ros2 pull --ff-only
+fi
 cd "$ROS_WS"
 source /opt/ros/jazzy/setup.bash
 rosdep install --from-paths src --ignore-src -r -y
@@ -468,6 +477,27 @@ If two LD19 driver processes are present:
 sudo systemctl restart ld19.service
 sudo systemctl restart ld19-stack.service
 ros2 topic info /scan -v
+```
+
+### G) colcon error: Duplicate package names not supported (ldlidar_stl_ros2)
+
+This means `ldlidar_stl_ros2` exists in more than one location, commonly both:
+- `$ROS_WS/ldlidar_stl_ros2`
+- `$ROS_WS/src/ldlidar_stl_ros2`
+
+Fix:
+
+```bash
+cd "$ROS_WS"
+find . -name package.xml -exec grep -H "<name>ldlidar_stl_ros2</name>" {} \;
+
+# Keep src copy; move top-level duplicate out of workspace
+if [ -d "$ROS_WS/ldlidar_stl_ros2" ]; then
+  mv "$ROS_WS/ldlidar_stl_ros2" "$HOME/ldlidar_stl_ros2_backup_$(date +%Y%m%d_%H%M%S)"
+fi
+
+source /opt/ros/jazzy/setup.bash
+colcon build --symlink-install --packages-select ldlidar_stl_ros2 --event-handlers console_direct+ --executor sequential
 ```
 
 ---
