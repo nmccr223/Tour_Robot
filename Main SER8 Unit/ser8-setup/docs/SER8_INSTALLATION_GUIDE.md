@@ -481,3 +481,88 @@ sudo rm -rf /usr/local/bin/tour_robot
 
 sudo systemctl daemon-reload
 ```
+
+---
+
+## 10) TL-SG108E switch setup and PLC-ID-based IP plan
+
+Use this section when commissioning a new robot or rebuilding networking after replacing the switch.
+
+### Why this is PLC-ID-based
+
+The PLC is usually the hardest unit to physically access once installed. To avoid re-addressing other modules later, set the network from the PLC ID first, then derive SER8 and CM5 addresses from that same ID.
+
+Define:
+- `PLC_ID = N` where `N` is the last octet used by PLC on `192.168.10.N`
+- Recommended range for `N`: `2` to `49`
+
+Derived addressing rule:
+- PLC: `192.168.10.N`
+- SER8 control NIC: `192.168.10.(N + 8)`
+- CM5: `192.168.10.(N + 18)`
+- Switch management (TL-SG108E): `192.168.10.254`
+- Gateway/router (if used): `192.168.10.1`
+- Subnet mask (all): `255.255.255.0`
+
+Default example (current project defaults):
+- If `N = 2`, then PLC = `192.168.10.2`, SER8 = `192.168.10.10`, CM5 = `192.168.10.20`
+
+### Module addressing table
+
+| Module | Addressing rule | Default (`N=2`) | Notes |
+|---|---|---|---|
+| TL-SG108E switch (management UI) | `192.168.10.254` | `192.168.10.254` | Change from factory default `192.168.0.1` |
+| SER8 main PC (control NIC) | `192.168.10.(N + 8)` | `192.168.10.10` | Host running ROS bringup |
+| CM5 (LiDAR host) | `192.168.10.(N + 18)` | `192.168.10.20` | SSH/service watchdog target |
+| PLC motor controller | `192.168.10.N` | `192.168.10.2` | Anchor ID for the whole robot |
+| Front OAK-D camera | N/A (USB) | N/A | No Ethernet IP required |
+| Rear OAK-D camera | N/A (USB) | N/A | No Ethernet IP required |
+
+### TL-SG108E setup procedure (safe sequence)
+
+1. Isolate management access first.
+    - Connect a laptop to switch.
+    - If switch is still factory settings, set laptop static IP to `192.168.0.10/24`.
+    - Open `http://192.168.0.1` and log in.
+
+2. Set switch management IP for robot subnet.
+    - Change switch management IP to `192.168.10.254`.
+    - Set subnet mask to `255.255.255.0`.
+    - Set gateway `192.168.10.1` only if an upstream router is present.
+    - Save/apply and reconnect using `http://192.168.10.254`.
+
+3. Program or confirm PLC first (anchor device).
+    - Set PLC to `192.168.10.N` in PLC firmware.
+    - Keep PLC port `5005` unchanged unless software is updated to match.
+
+4. Configure SER8 and CM5 from the same PLC ID.
+    - SER8 control NIC: `192.168.10.(N + 8)`.
+    - CM5: `192.168.10.(N + 18)`.
+
+5. Update runtime configs on SER8 if values changed.
+    - `/usr/local/bin/start-tour-robot`: `CM5_HOST`, `MOTOR_HOST`.
+    - `~/workspace/Tour_Robot/Main SER8 Unit/Main Control/cm5_service_watchdog.py`: `CM5_HOST`.
+    - Launch files/params that set `motor_host`.
+
+6. Validate end-to-end before normal operation.
+    - From SER8: ping CM5 and PLC.
+    - From SER8: verify SSH to CM5.
+    - From SER8: verify PLC TCP endpoint on port `5005`.
+    - Run `start-tour-robot` and confirm no communication errors.
+
+### Quick command checklist (run on SER8)
+
+Replace `<CM5_IP>` and `<PLC_IP>` with the derived addresses.
+
+```bash
+ping -c 3 <CM5_IP>
+ping -c 3 <PLC_IP>
+ssh tourrobot@<CM5_IP> "hostname"
+nc -zv <PLC_IP> 5005
+```
+
+### Important constraints
+
+- Keep all robot Ethernet endpoints in the same `/24` unless you intentionally configure VLAN/routing.
+- Do not assign duplicate IP addresses.
+- If changing PLC ID `N`, update all dependent addresses and configs in one maintenance window.
