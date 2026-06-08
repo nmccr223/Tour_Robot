@@ -2,6 +2,10 @@
 
 Central repository for Tour Robot control, perception, deployment, and operational documentation across SER8, CM5, PLC motor control, and camera pipelines.
 
+## Project Status
+
+For current work status and remaining tasks, see the [Remaining Work List](Main%20SER8%20Unit/ser8-setup/Remaining%20work.md).
+
 ## Architecture at a Glance
 
 ```text
