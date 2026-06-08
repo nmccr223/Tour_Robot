@@ -1,5 +1,8 @@
 # SER8 Reinstall Guide (Ubuntu 24.04 + ROS 2 Jazzy)
 
+## Project Status
+For current work status and remaining tasks, see the [Remaining Work List](Main%20SER8%20Unit/ser8-setup/Remaining%20work.md).
+
 This folder is the authoritative setup kit for rebuilding a SER8 from a fresh Ubuntu 24.04 LTS install.
 
 It covers:
